@@ -33,6 +33,8 @@ import time
 from serial import Serial
 
 BAUDRATE = 9600
+SCRIPT_VERSION = "1.0"
+REQ_ATTACK_BOARD_VERSION = "1.x"
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-o", "--output", help="Output file")
@@ -79,7 +81,8 @@ print(
 
 print("Credits: Johannes Obermaier, Marc Schink and Kosma Moczek")
 print("Author: Patrick Pedersen <ctx.xda@gmail.com>")
-print("Version: 1.0.0")
+print("Script Version: " + SCRIPT_VERSION)
+print("Requires Attack-Board Firmware Version: " + REQ_ATTACK_BOARD_VERSION)
 
 print("")
 print("Instructions:")
@@ -98,6 +101,7 @@ print("5. Disconnect the debug probe")
 print(
     "6. Once ready, press enter to start dumping the firmware. This will take a while"
 )
+print("For more detailed steps, see the README.md file.")
 print("")
 
 if args.instructions:

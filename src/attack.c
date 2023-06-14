@@ -14,6 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+ * Pi Pico Attack Board Firmware
+ * Version: 1.0
+
  * This attack is based on the works of:
  *  Johannes Obermaier, Marc Schink and Kosma Moczek
  * The relevant paper can be found here, particularly section H3:
@@ -134,8 +137,8 @@ int main()
 	// over UART with readout protection disabled.
 	gpio_set_dir(RESET_PIN, GPIO_IN);
 
-	uint stalls = 0;
 	// Forward dumped data from UART to USB serial
+	uint stalls = 0;
 	while (true) {
 		if (uart_is_readable(UART_ID)) {
 			char c = uart_getc(UART_ID);
