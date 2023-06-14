@@ -1,9 +1,21 @@
-# STM32F1 Pico Pwner
+# STM32F1 Pico Pwner <!-- omit in toc -->
 
 A Pi Pico implementation of Johannes Obermaier's, Marc Schink's and Kosma Moczek's Glitch and FPB attack to bypass RDP (read-out protection) level 1 on STM32F1 chips.
 
 The paper describing the attack can be found [here](https://www.usenix.org/system/files/woot20-paper-obermaier.pdf) along with
 its original implementation [here](https://github.com/JohannesObermaier/f103-analysis/tree/master/h3)
+
+# Table of Contents <!-- omit in toc -->
+
+- [Usage](#usage)
+  - [What you'll need to get started](#what-youll-need-to-get-started)
+  - [Pre-requisites](#pre-requisites)
+  - [Building and flashing the attack firmware onto the Pi Pico](#building-and-flashing-the-attack-firmware-onto-the-pi-pico)
+  - [Building the target board exploit firmware](#building-the-target-board-exploit-firmware)
+  - [Hardware Setup](#hardware-setup)
+  - [Executing the attack](#executing-the-attack)
+- [How does the attack work?](#how-does-the-attack-work)
+
 
 # Usage
 
@@ -12,7 +24,7 @@ its original implementation [here](https://github.com/JohannesObermaier/f103-ana
 - A PC running Linux
 - A Raspberry Pi Pico
 - A debug probe (e.g. a ST-Link V2)
-- A STM32F1 target board (in this repo's case a Blue Pill)
+- A STM32F1 target board (in this repo's case a Blue Pill is used)
 
 ## Pre-requisites
 
@@ -27,7 +39,7 @@ Additionally, install the following dependencies if you intend to build the atta
 - [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk)
 - [arm-none-eabi-gcc](https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain)
 
-The instructions also rely that you have a basic understanding of how to build Pico SDK based projects, as well as how to a STM32F1 compatible debug probe
+The instructions also rely that you have a basic understanding of how to build Pico SDK based projects, as well as how to use a STM32F1 compatible debug probe
 along with OpenOCD. It also pre-supposes that you have a basic understanding of how to connect your Pi Pico to your target STM32F1 board. 
 
 ## Building and flashing the attack firmware onto the Pi Pico
@@ -79,19 +91,19 @@ If everything went well, you should now have a `targetfw.bin` file in your `targ
 
 Prior to connecting your Pi Pico to your target board, ensure that the `BOOT1` pin (typically `PB2`, but please refer to your chips datasheet) on your target board is permanently set high by using a Pull-Up resistor (1k - 100k) to 3.3V. **Neglecting to use a pull-up resistor to drive `BOOT1` high can have severe consequences, potentially damaging the pin. This is because the BOOT1 pin is also used as a GPIO pin, and driving it as a low output without a pull-up resistor could cause a direct short.**
 
-Next, connect your Pi Pico to your target board as follows:
+Next, connect your Pi Pico to your target board as shown in the table bellow:
 
-| Pi Pico          | STM32F1          |
-|------------------|------------------|
-| GND              | GND              |
-| GPIO0 / UART0_TX | PA9 / USART1_RX  |
-| GPIO1 / UART0_RX | PA10 / USART1_TX |
-| GPIO2            | VDD              |
-| GPIO4            | NRST             |
-| GPIO5            | BOOT0            |
+| Pi Pico          | STM32F1   |
+|------------------|-----------|
+| GND              | GND       |
+| GPIO0 / UART0_TX | USART1_RX |
+| GPIO1 / UART0_RX | USART1_TX |
+| GPIO2            | VDD       |
+| GPIO4            | NRST      |
+| GPIO5            | BOOT0     |
 
 Should the USART1 pins on your target STM32F1 board be occupied, you will have to alter the target board exploit firmware to use a different USART peripheral.
-This is discussed in the [How does the attack work?](#how-does-the-attack-work) section.
+This is discussed in more detail in the [How does the attack work?](#how-does-the-attack-work) section.
 
 Bellow is a picture that shows the hardware setup using a Blue Pill board:
 
@@ -99,10 +111,10 @@ Bellow is a picture that shows the hardware setup using a Blue Pill board:
 
 ## Executing the attack
 
-1. Begin by connecting connecting the Pi Pico to your PC via USB. Your Pi Pico as well as the target board should be powered on.
+1. Begin by connecting connecting the Pi Pico to your PC via USB. Your Pi Pico as well as the target board should now be powered on.
 
 > If the Pi Pico does not power on, something is either shorting or the target board is drawing too much current. If the target board draws
-> too much current, you may need to buffer the power pin (GPIO2) with a transistor or a MOSFET.
+> too much current, you may need to buffer the power pin (GPIO2) with a BJT or a MOSFET.
 
 1. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
 2. Create a new terminal window in the top of this repository and spawn a new OpenOCD instance:
@@ -138,15 +150,16 @@ print it to the terminal.
 9. You should now see the target board's flash memory being dumped to the terminal. Once the dump is complete, the script will exit. This process can take a couple of minutes.
 
 Should the dump script not output anything, the following issues could be the cause:
+- The debug probe is still connected to the target board
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
-- The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a transistor or MOSFET)
+- The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a BJT or MOSFET)
 - The power board has a too high capacitance on the power and/or reset pins (Try removing any power and/or reset capacitors)
 - The STM32F1 board is not genuine or maybe too new (there are rumors that the exploit has been patched in 2020+ revisions of STM32F1 chips)
 
 If the dump script worked, you should now have a complete dump of the target board's flash memory in the `dump.bin` file (or whatever you named it).
 Please note that it is normal for the dump to contain a lot of `0xFF` bytes at the end. This is because unsused flash memory is typically erased to `0xFF` bytes.
 
-## How does the attack work?
+# How does the attack work?
 
 TODO
