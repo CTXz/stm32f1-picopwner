@@ -11,15 +11,6 @@ project(pico_stm32_pwn C CXX ASM)
 # initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-add_executable(attack
-    attack.c
+add_subdirectory(
+    src
 )
-
-# Add pico_stdlib library which aggregates commonly used features
-target_link_libraries(attack pico_stdlib)
-
-pico_enable_stdio_usb(attack 1)
-pico_enable_stdio_uart(attack 0)
-
-# create map/bin/hex/uf2 file in addition to ELF.
-pico_add_extra_outputs(attack)
