@@ -55,14 +55,16 @@ parser.add_argument(
     "--targetfw",
     help="Path to target exploit firmware binary",
     required=False,
-    default="targetfw/targetfw.bin"
+    default="targetfw/targetfw.bin",
 )
 args = parser.parse_args()
 
 # Check if targetfw.bin exists
 if Path(args.targetfw).is_file() == False:
     print("Could not find target firmware binary: " + args.targetfw)
-    print("Please build the target firmware first or specify the path to the binary via the -t option")
+    print(
+        "Please build the target firmware first or specify the path to the binary via the -t option"
+    )
     exit(1)
 
 print("")
@@ -134,14 +136,16 @@ while True:
         ser = Serial(args.port, BAUDRATE)
         if not print_already_connected:
             print("Device already connected to " + args.port)
-            print("Please press the reset button on the Pi Pico or reconnect it to ensure a clean state")
+            print(
+                "Please press the reset button on the Pi Pico or reconnect it to ensure a clean state"
+            )
             print_already_connected = True
         ser.close()
         time.sleep(1)
     except:
         if print_already_connected:
             print("Device disconnected")
-        break    
+        break
 
 print("Waiting for Pi Pico to be connected... (Looking for " + args.port + ")")
 
@@ -167,18 +171,36 @@ dbg_probe_connected = False
 while True:
     try:
         result = subprocess.run(
-            ["openocd", "-f", "interface/stlink.cfg", "-f", "target/stm32f1x.cfg", "-c", "init", "-c", "reset halt", "-c", "reset_config none", "-c", "targets", "-c", "exit"],
+            [
+                "openocd",
+                "-f",
+                "interface/stlink.cfg",
+                "-f",
+                "target/stm32f1x.cfg",
+                "-c",
+                "init",
+                "-c",
+                "reset halt",
+                "-c",
+                "reset_config none",
+                "-c",
+                "targets",
+                "-c",
+                "exit",
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
         lines = result.stderr.splitlines()
         for line in lines:
             if "halted" in line:
-                print ("Debug probe connected to STM32F1 target")
+                print("Debug probe connected to STM32F1 target")
                 dbg_probe_connected = True
                 break
             elif "Error: expected 1 of 1" in line:
-                print("Error: Connecteed device does not be appear to be an STM32F1 device")
+                print(
+                    "Error: Connecteed device does not be appear to be an STM32F1 device"
+                )
                 ser.close()
                 exit(1)
 
@@ -198,9 +220,23 @@ input()
 try:
     result = subprocess.run(
         # openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c init -c "load_image targetfw/targetfw.bin 0x20000000" -c exit
-        ["openocd", "-f", "interface/stlink.cfg", "-f", "target/stm32f1x.cfg", "-c", "init", "-c", "reset_config none", "-c", "load_image " + args.targetfw + " 0x20000000", "-c", "exit"],
+        [
+            "openocd",
+            "-f",
+            "interface/stlink.cfg",
+            "-f",
+            "target/stm32f1x.cfg",
+            "-c",
+            "init",
+            "-c",
+            "reset_config none",
+            "-c",
+            "load_image " + args.targetfw + " 0x20000000",
+            "-c",
+            "exit",
+        ],
         capture_output=True,
-        text=True
+        text=True,
     )
     lines = result.stderr.splitlines()
     for line in lines:
@@ -222,9 +258,23 @@ disconnect_detected = False
 while True:
     try:
         result = subprocess.run(
-            ["openocd", "-f", "interface/stlink.cfg", "-f", "target/stm32f1x.cfg", "-c", "init", "-c", "reset_config none", "-c", "targets", "-c", "exit"],
+            [
+                "openocd",
+                "-f",
+                "interface/stlink.cfg",
+                "-f",
+                "target/stm32f1x.cfg",
+                "-c",
+                "init",
+                "-c",
+                "reset_config none",
+                "-c",
+                "targets",
+                "-c",
+                "exit",
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
         lines = result.stderr.splitlines()
         for line in lines:
@@ -232,7 +282,7 @@ while True:
                 print("Debug probe disconnected from STM32F1 target")
                 disconnect_detected = True
                 break
-        
+
         if disconnect_detected:
             break
 
