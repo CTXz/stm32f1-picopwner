@@ -39,6 +39,9 @@ SCRIPT_VERSION = "1.0"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 
+script_path = Path(__file__).resolve()
+default_targetfw_bin = str(script_path.parent / "targetfw" / "targetfw.bin")
+
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-o", "--output", help="Output file")
 parser.add_argument(
@@ -56,7 +59,7 @@ parser.add_argument(
     "--targetfw",
     help="Path to target exploit firmware binary",
     required=False,
-    default="targetfw/targetfw.bin",
+    default=default_targetfw_bin,
 )
 args = parser.parse_args()
 
