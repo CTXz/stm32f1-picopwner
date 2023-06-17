@@ -10,11 +10,25 @@ its original implementation [here](https://github.com/JohannesObermaier/f103-ana
 - [Usage](#usage)
   - [What you'll need to get started](#what-youll-need-to-get-started)
   - [Pre-requisites](#pre-requisites)
+  - [Cloning the repository](#cloning-the-repository)
   - [Building and flashing the attack firmware onto the Pi Pico](#building-and-flashing-the-attack-firmware-onto-the-pi-pico)
   - [Building the target board exploit firmware](#building-the-target-board-exploit-firmware)
   - [Hardware Setup](#hardware-setup)
   - [Executing the attack](#executing-the-attack)
+  - [Troubleshooting](#troubleshooting)
 - [How does the attack work?](#how-does-the-attack-work)
+  - [Relevant STM32F1 properties](#relevant-stm32f1-properties)
+    - [Read-Out Protection (RDP)](#read-out-protection-rdp)
+    - [The Flash Patch and Breakpoint Unit (FPB)](#the-flash-patch-and-breakpoint-unit-fpb)
+    - [SRAM](#sram)
+  - [2-Stage Exploit Firmware](#2-stage-exploit-firmware)
+      - [Stage 1](#stage-1)
+      - [Stage 2](#stage-2)
+  - [The Attack](#the-attack)
+    - [Step 1: Preparation](#step-1-preparation)
+    - [Step 2: Power Glitching](#step-2-power-glitching)
+    - [Step 3: Exploit Firmware - Stage 1](#step-3-exploit-firmware---stage-1)
+    - [Step 4: Exploit Firmware - Stage 2](#step-4-exploit-firmware---stage-2)
 
 
 # Usage
@@ -42,18 +56,25 @@ Additionally, install the following dependencies if you intend to build the atta
 The instructions also rely that you have a basic understanding of how to build Pico SDK based projects, as well as how to use a STM32F1 compatible debug probe
 along with OpenOCD. It also pre-supposes that you have a basic understanding of how to connect your Pi Pico to your target STM32F1 board. 
 
-## Building and flashing the attack firmware onto the Pi Pico
+## Cloning the repository
 
-> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the pre-built `attack_v1.0.uf2` file from the [releases page](TODO)
-
-Begin by cloning and entering this repository:
+To get started, clone this repository and enter it:
 
 ```bash
 $ git clone https://github.com/CTXz/stm32f1-picopwner.git
 $ cd stm32f1-picopwner
 ```
 
-Next, edit the top [`CMakelists.txt`](CMakelists.txt) file to point to the location of your Pico SDK installation. For that you'll need to edit the following line:
+## Building and flashing the attack firmware onto the Pi Pico
+
+> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the pre-built `attack_v1.0.uf2` file from the [releases page](TODO)
+
+Start out be entering the `attack` directory:
+```bash
+$ cd attack
+```
+
+Next, edit the [`CMakelists.txt`](CMakelists.txt) file to point to the location of your Pico SDK installation. For that you'll need to edit the following line:
 
 ```cmake
 set(PICO_SDK_PATH "/usr/share/pico-sdk")
@@ -74,22 +95,22 @@ If everything went well, you should now have a `attack.uf2` file in your build d
 
 ## Building the target board exploit firmware
 
-> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the pre-built `targetfw.bin` file from the [releases page](TODO)
+> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the pre-built `target.bin` file from the [releases page](TODO)
 
 The attack relies on the target STM32F1 board getting a exploit firmware temporarily flashed onto its SRAM. This firmware contains a two-stage exploit that will dump the target board's flash memory to the serial port upon completion.
 
-To compile the target firmware, enter the `targetfw` directory and run `make`:
+To compile the target firmware, enter the `target` directory and run `make`:
 
 ```bash
-$ cd targetfw
+$ cd target
 $ make
 ```
 
-If everything went well, you should now have a `targetfw.bin` file in your `targetfw` directory. This file will be flashed onto the target board's SRAM during the attack.
+If everything went well, you should now have a `target.bin` file in your `target` directory. This file will be flashed onto the target board's SRAM during the attack.
 
 ## Hardware Setup
 
-Prior to connecting your Pi Pico to your target board, ensure that the `BOOT1` pin (typically `PB2`, but please refer to your chips datasheet) on your target board is permanently set high by using a Pull-Up resistor (1k - 100k) to 3.3V. **Neglecting to use a pull-up resistor to drive `BOOT1` high can have severe consequences, potentially damaging the pin. This is because the BOOT1 pin is also used as a GPIO pin, and driving it as a low output without a pull-up resistor could cause a direct short.**
+Prior to connecting your Pi Pico to your target board, ensure that the `BOOT1` pin (typically `PB2`, but please refer to your chips datasheet) on your target board is permanently set high by using a Pull-Up resistor (1k - 100k) to 3.3V. **Neglecting to use a pull-up resistor to drive `BOOT1` high can have severe consequences, potentially damaging the pin. This is because the `BOOT1` pin is also used as a GPIO pin, and driving it as a low output without a pull-up resistor could cause a direct short.**
 
 Next, connect your Pi Pico to your target board as shown in the table bellow:
 
@@ -116,41 +137,26 @@ Bellow is a picture that shows the hardware setup using a Blue Pill board:
 > If the Pi Pico does not power on, something is either shorting or the target board is drawing too much current. If the target board draws
 > too much current, you may need to buffer the power pin (GPIO2) with a BJT or a MOSFET.
 
-1. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
-2. Create a new terminal window in the top of this repository and spawn a new OpenOCD instance:
-
-```bash
-$ openocd -f interface/stlink.cfg -f target/stm32f1x.cfg
-```
-
-4. Create another terminal window in the top of this repository and create a telnet connection to the OpenOCD instance:
-
-```bash
-$ telnet localhost 4444
-```
-
-5. In the telnet session, flash the target board firmware onto the target board's SRAM:
-
-```bash
-> load_image targetfw/targetfw.bin 0x20000000
-```
-
-6. Once the target board firmware has been flashed, disconnect the debug probe from the target board. (You may also close the OpenOCD instance)
-
-7. Create a new terminal window in the top of this repository and run the dump script:
+2. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
+3. Create a new terminal window in the top of this repository and run the dump script:
 ```bash
 $ python3 dump.py -p /dev/ttyACMx -o dump.bin
 ```
 
 Where `/dev/ttyACMx` is the serial port that your Pi Pico is connected to. If left unspecified, the script will attempt to use `/dev/ttyACM0` by default.
-`dump.bin` is the file that the target board's flash memory will be dumped to. If left unspecified, the script will not write the dump to a file but only
-print it to the terminal.
+`dump.bin` is the file that the target board's flash memory will be dumped to. **If left unspecified, the script will not write the dump to a file but only
+print it to the terminal.**
 
-8. The dump script will ask you to press any key to begin the attack. Ensure that the debug probe is really disconnected from the target board and press any key to begin the attack.
-9. You should now see the target board's flash memory being dumped to the terminal. Once the dump is complete, the script will exit. This process can take a couple of minutes.
+> Note: If you decided to use a release binary instead of building the target firmware yourself, you will need to specify the path to the binary using the
+> `-t` flag or else the script will attempt to look for the binary in `target/target.bin` by default.
+
+4. From this point on, simply follow the instructions printed by the script.
+
+## Troubleshooting
 
 Should the dump script not output anything, the following issues could be the cause:
 - The debug probe is still connected to the target board
+- The `BOOT1` pin on the target board is being set high
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
 - The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a BJT or MOSFET)
@@ -162,4 +168,71 @@ Please note that it is normal for the dump to contain a lot of `0xFF` bytes at t
 
 # How does the attack work?
 
-TODO
+## Relevant STM32F1 properties
+
+Due to the attacks complexity, we must first introduce a couple of the STM32F1's properties that make the attack possible.
+
+### Read-Out Protection (RDP)
+
+Given that this whole repository is about circumventing RDP Level 1, we will skip explaining the differce between RDP Level 0, 1 and 2 (does not apply to F1 chips) and instead focus on the properties of RDP Level 1 that make the attack possible.
+
+When RDP Level 1 is set, the device will lock down access to flash memory as soon as either of the following conditions are met:
+
+- Condition 1: A debug probe is connected to the device
+- Condition 2: The device is booted into System Memory Mode (`BOOT0` pin is set high, `BOOT1` pin is set low), aka. "Bootloader Mode"
+- Condition 3: The device boots from SRAM (`BOOT0` and `BOOT1` pins are set high), starting execution at address `0x20000000`
+
+It is important to know, that the **read-out protection lock caused by condition 1 will persist even after the debug probe is disconnected and even after a device reset has occured!** In other words, it persists until the next power cycle after the probe has been disconnected. The read-out protection lock caused by condition 2 and 3 will only persist until the next device reset.
+
+As we'll see later, the attack uses a glitching exploit to ridden the lock of conidition 1 and then uses a 2-stage firmware exploit to get rid of the locks caused by condition 2 and 3.
+
+### The Flash Patch and Breakpoint Unit (FPB)
+
+The Arm Cortex-M3 (which the STM32F1 series uses) features something called the [Flash Patch and Breakpoint Unit (FPB)](https://developer.arm.com/documentation/ddi0337/h/debug/about-the-flash-patch-and-breakpoint-unit--fpb-). The FPB possesses comparators that enable the setup of "patches" which redirect execution to a specified address when a particular memory address is accessed. It is important to know that **these "patches" conveniently persist even after a device reset**. Furthermore, the FPB lacks protection, allowing it to be configured even from code executed in SRAM.
+
+The FPB is used in the attack to trick the device into executing code from SRAM when it supposed to execute code from flash memory. More details on this will be given further below where we discuss the whole attack in detail.
+
+### SRAM
+
+A critical part of the attack is the ability to execute exploit code from SRAM. Unlike flash memory, the contents of SRAM are lost as soon as the device loses power. Well, see, this is not entirely true. The SRAM of the STM32F1 suffers from [data retention](https://ieeexplore.ieee.org/document/6330672) which means that the contents of SRAM will persist for a very short period of time even after the device loses power.
+
+![SRAM and DRAM Data Retention](img/DataRetention.png)
+Example of measured data retention, presumably not from a STM32F1.
+[Source](https://ieeexplore.ieee.org/document/6330672)
+
+This property of the SRAM will be exploited in the attack to preserve SRAM contents even after power cycling the STM32F1 in order to ridden the RDP lock caused by the debug probe.
+
+## 2-Stage Exploit Firmware
+
+The last part that needs a seperate explanation is the 2-Stage exploit firmware that will be loaded into the STM32F1's SRAM. The code for the target exploit firmware can be found in the [target](target) directory.
+
+#### Stage 1
+The first stage of the exploit firmware is responsible for patching the FPB (Flash Patch and Breakpoint unit) to intercept a reset vector fetch (by patching `0x00000004`). This interception redirects the execution to the second stage entry point of the exploit firmware located in the SRAM. I.e. once the patch has been applied, we can reset the STM32F1 and let it "boot from flash" (thus ridden the RDP lock caused by booting into SRAM), and yet the device will still execute the second stage of the exploit firmware. This effectively tricks the STM32F1 into executing code from SRAM when it is supposed to execute code from flash memory.
+
+#### Stage 2
+By the time stage-2 has been entered, the read-out protection has been completely circumvented. The second stage of the exploit firmware simply reads and dumps the contents of the flash memory to the serial port, where it is then read by the Pi Pico and further directed to the host computer via USB.
+
+## The Attack
+
+With all of the above explained, we can now finally explain the attack in detail. The steps bellow assume the hardware setup described in the [Hardware Setup](#hardware-setup) section.
+
+### Step 1: Preparation
+
+During the first step, the debug probe is connected to the target STM32F1 board. This will cause condition 1 of the RDP lock to be triggered. The debug probe is then used to load the exploit firmware into SRAM and is then disconnected from the target board. As already mentioned above, condition 1 of the RDP lock will persist until the device is power cycled!
+
+### Step 2: Power Glitching
+
+The goal here is to get rid of the RDP lock caused by condition 1, as well as booting into SRAM. To achieve this without wiping the exploit firmware from SRAM, we will use a power glitching attack. The attack board (Pi Pico) will first prepare `BOOT0` high and toggle the power of the target board off (using `GPIO2`). After switching the power off, the attack board will monitor the `NRST` pin's logic state (using `GPIO4`) and immidiately restore power once
+it the `NRST` pin drops low. Due to the short time it takes for the `NRST` pin to drop low, the SRAM contents will remain preserved (due to data retention) and the STM32F1 will boot into SRAM since `BOOT0` and `BOOT1` are now both high. The RDP lock caused by condition 1 will also be ridden since the debug probe is not connected to the target board anymore and a power cycle has occured.
+
+![Power Glitching](img/PowerGlitching.png)
+[Source](https://www.usenix.org/system/files/woot20-paper-obermaier.pdf)
+
+### Step 3: Exploit Firmware - Stage 1
+
+The STM32F1 is now booted into SRAM and the exploit firmware's first stage is executed. Altough we have gotten rid of the RDP lock caused by condition 1, we
+we are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the BOOT0 pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
+
+### Step 4: Exploit Firmware - Stage 2
+
+The STM32F1 is now executing the second stage of the exploit firmware. The second stage simply reads and dumps the contents of the flash memory to the serial port, where it is then read by the Pi Pico and further directed to the host computer via USB. Once the dump is complete, the exploit firmware will stop sending data to the serial port and the attack is complete.
