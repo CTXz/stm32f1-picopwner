@@ -59,6 +59,8 @@
 
 #define UART_STALLS_FOR_LED_OFF 10000
 
+const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
+
 int main()
 {
 	stdio_init_all();
@@ -140,6 +142,21 @@ int main()
 	// stage 2 of the exploit, which will output a shell
 	// over UART with readout protection disabled.
 	gpio_set_dir(RESET_PIN, GPIO_IN);
+
+	// Wait for dump start magic to ensure
+	// that we don't forward any garbage data
+	// caused by the reset
+	uint magic_index = 0;
+	while (true) {
+		char c = uart_getc(UART_ID);
+		if (c == DUMP_START_MAGIC[magic_index]) {
+			if (++magic_index == sizeof(DUMP_START_MAGIC)) {
+				break;
+			}
+		} else {
+			magic_index = 0;
+		}
+	}
 
 	// Forward dumped data from UART to USB serial
 	uint stalls = 0;

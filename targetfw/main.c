@@ -16,6 +16,8 @@
 
 #include <stdint.h>
 
+const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
+
 uint32_t volatile * const rccApb2 = (uint32_t *) 0x40021018u;
 uint32_t volatile * const ioAModerH = (uint32_t *) 0x40010804u;
 uint32_t volatile * const uart1Ctrl = (uint32_t *) 0x40013800u;
@@ -53,6 +55,12 @@ int main(void)
 	/* config and enable uart */
 	uart1Ctrl[2] = 0x00000341u;
 	uart1Ctrl[3] = 0x0000200Cu;
+
+	/* Print start magic to inform the host that
+	   we are going to dump */
+	for (uint32_t i = 0; i < sizeof(DUMP_START_MAGIC); i++) {
+		writeChar(DUMP_START_MAGIC[i]);
+	}
 
 	uint32_t const * addr = (uint32_t*) 0x08000000;
 	while (((uintptr_t) addr) < (0x08000000 + 64u * 1024u)) {
