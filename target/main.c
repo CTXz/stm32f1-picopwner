@@ -11,7 +11,8 @@
  * root shell code published here:
  * https://github.com/JohannesObermaier/f103-analysis/tree/master/h3
  * It removes the root shell functionality and goes straight
- * to dumping once booted.
+ * to dumping once booted. Additionally it also fixes the dump
+ * using the wrong endianness.
  */
 
 #include <stdint.h>
