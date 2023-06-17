@@ -107,7 +107,7 @@ This is discussed in more detail in the [How does the attack work?](#how-does-th
 
 Bellow is a picture that shows the hardware setup using a Blue Pill board:
 
-![Blue Pill Example](docs/BPExample.png)
+![Blue Pill Example](img/BPExample.png)
 
 ## Executing the attack
 

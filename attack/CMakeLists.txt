@@ -1,3 +1,16 @@
+cmake_minimum_required(VERSION 3.13)
+
+set(PICO_SDK_PATH "/usr/share/pico-sdk")
+
+# initialize the SDK based on PICO_SDK_PATH
+# note: this must happen before project()
+include(pico_sdk_import.cmake)
+
+project(attack C CXX ASM)
+
+# initialize the Raspberry Pi Pico SDK
+pico_sdk_init()
+
 add_executable(attack
     attack.c
 )
@@ -10,9 +23,5 @@ target_link_libraries(attack pico_stdlib
 
 pico_enable_stdio_usb(attack 1)
 pico_enable_stdio_uart(attack 0)
-
-# Set the output directory for the UF2 file
-set(OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/..")
-set_target_properties(attack PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_PATH})
 
 pico_add_extra_outputs(attack)

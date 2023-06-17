@@ -1,7 +1,10 @@
 {
-    "cmake.environment":
-    {
-        "PICO_SDK_PATH": "/home/patrick/pico-sdk"
-    },
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+  "cmake.environment": {
+    "PICO_SDK_PATH": "/home/patrick/pico-sdk"
+  },
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "python.formatting.provider": "none"
 }

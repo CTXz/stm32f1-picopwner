@@ -40,7 +40,7 @@ REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 
 script_path = Path(__file__).resolve()
-default_targetfw_bin = str(script_path.parent / "targetfw" / "targetfw.bin")
+default_targetfw_bin = str(script_path.parent / "target" / "target.bin")
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-o", "--output", help="Output file")
@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     "-t",
     "--targetfw",
-    help="Path to target exploit firmware binary",
+    help="Path to target exploit firmware",
     required=False,
     default=default_targetfw_bin,
 )
@@ -197,7 +197,7 @@ while True:
                 break
             elif "Error: expected 1 of 1" in line:
                 print(
-                    "Error: Connecteed device does not be appear to be an STM32F1 device"
+                    "Error: Connected device does not be appear to be an STM32F1 device"
                 )
                 ser.close()
                 exit(1)
@@ -212,12 +212,64 @@ while True:
 
     time.sleep(1)  # Wait for 1 second before retrying
 
+try:
+    result = subprocess.run(
+        [
+            "openocd",
+            "-f",
+            "interface/stlink.cfg",
+            "-f",
+            "target/stm32f1x.cfg",
+            "-c",
+            "init",
+            "-c",
+            "stm32f1x options_read 0",
+            "-c",
+            "exit",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    read_protection_status = None
+    lines = result.stderr.splitlines()
+    for line in lines:
+        if "read protection: on" in line:
+            read_protection_status = True
+            print("STM32F1 target is indeed read protected")
+            break
+        elif "read protection: off" in line:
+            read_protection_status = False
+            print(
+                "STM32F1 target is not read protected, the attack may not be necessary"
+            )
+            print("Do you wish to continue anyway? (y/n): ", end="")
+            while True:
+                choice = input().lower()
+                if choice == "y":
+                    break
+                elif choice == "n":
+                    ser.close()
+                    exit(0)
+                else:
+                    print("Please respond with 'y' or 'n'")
+            break
+except FileNotFoundError:
+    print("openocd command not found. Make sure it is installed.")
+    ser.close()
+    exit(1)
+
+if read_protection_status is None:
+    print("Error: Could not determine read protection status")
+    print("Is your debug probe properl connected to the STM32F1 target?")
+    ser.close()
+    exit(1)
+
 print("Press any key to load the target exploit firmware to SRAM")
 input()
 
 try:
     result = subprocess.run(
-        # openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c init -c "load_image targetfw/targetfw.bin 0x20000000" -c exit
         [
             "openocd",
             "-f",
