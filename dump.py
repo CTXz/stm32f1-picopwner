@@ -37,6 +37,7 @@ from serial import Serial
 BAUDRATE = 9600
 SCRIPT_VERSION = "1.0"
 REQ_ATTACK_BOARD_VERSION = "1.x"
+SERIAL_TIMEOUT_S = 0.5
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-o", "--output", help="Output file")
@@ -306,7 +307,7 @@ with open(fname, "wb") as f:
     ser.write(b"1")
 
     # Enable timeout as we'll use this to detect when the attack is done
-    ser.timeout = 10
+    ser.timeout = SERIAL_TIMEOUT_S
 
     # Read dump from serial port
     read_bytes = 0
@@ -330,7 +331,7 @@ with open(fname, "wb") as f:
     if read_bytes == 0:
         print("")
         print("Timeout: No data received from target")
-        print("Please refer to the README for troubleshooting steps")
+        print("Please consult the README for troubleshooting steps")
         ser.close()
         exit(1)
     else:
