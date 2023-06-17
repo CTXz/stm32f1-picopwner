@@ -309,7 +309,7 @@ with open(fname, "wb") as f:
     ser.timeout = 10
 
     # Read dump from serial port
-    i = 0  # Counter for pretty printing
+    read_bytes = 0
     while True:
         data = ser.read()
 
@@ -323,13 +323,22 @@ with open(fname, "wb") as f:
         print(" " + data, end="")
 
         # Beak line every 16 bytes
-        i += 1
-        if i % 16 == 0:
+        read_bytes += 1
+        if read_bytes % 16 == 0:
             print()
 
-    print("\nDone")
+    if read_bytes == 0:
+        print("")
+        print("Timeout: No data received from target")
+        print("Please refer to the README for troubleshooting steps")
+        ser.close()
+        exit(1)
+    else:
+        print("")
+        print("Target has stopped sending data, assuming dump is complete")
+        print("Dumped " + str(read_bytes) + " bytes")
 
     if fname != "/dev/null":
-        print("Firmware dumped to " + fname)
+        print("Output saved to " + fname)
 
 ser.close()
