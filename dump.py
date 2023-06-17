@@ -115,13 +115,7 @@ print("     1  -> UART0 TX")
 print("     2  -> 3V3     ")
 print("     4  -> NRST    ")
 print("     5  -> BOOT0   ")
-print("3. Connect a debug probe to the STM32F1 target")
-print("4. Via openocd, load the target firmware to SRAM via the following command:")
-print("   > load_image targetfw/targetfw.bin 0x20000000")
-print("5. Disconnect the debug probe")
-print(
-    "6. Once ready, press enter to start dumping the firmware. This will take a while"
-)
+print("3. Follow the instructions provided by this script")
 print("For more detailed steps, see the README.md file.")
 print("")
 
