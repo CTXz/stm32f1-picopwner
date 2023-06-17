@@ -32,7 +32,7 @@ import argparse
 import time
 import subprocess
 from pathlib import Path
-from serial import Serial
+from serial import Serial, SerialException
 
 BAUDRATE = 9600
 SCRIPT_VERSION = "1.0"
@@ -140,7 +140,7 @@ while True:
             print_already_connected = True
         ser.close()
         time.sleep(1)
-    except:
+    except SerialException:
         if print_already_connected:
             print("Device disconnected")
         break
@@ -152,7 +152,7 @@ while True:
     try:
         ser = Serial(args.port, BAUDRATE)
         break
-    except:
+    except SerialException:
         time.sleep(1)
         continue
     break
