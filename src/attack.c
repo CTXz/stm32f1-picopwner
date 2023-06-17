@@ -63,6 +63,10 @@ int main()
 {
 	stdio_init_all();
 
+	// Prevent interpreting 0x0A as newline (0x0D 0x0A) instead of binary data
+	// This will spare you a headache when dealing with putchar()
+	stdio_set_translate_crlf(&stdio_usb, false);
+
 	// Init UART
 	uart_init(UART_ID, UART_BAUD);
 	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
