@@ -254,6 +254,9 @@ except FileNotFoundError:
 print("Target firmware loaded to SRAM")
 
 print("Waiting for debug probe to be disconnected...")
+print(
+    "Warning: Disconnect the debug probe from the target, not just the host's USB port!"
+)
 disconnect_detected = False
 while True:
     try:
@@ -278,7 +281,10 @@ while True:
         )
         lines = result.stderr.splitlines()
         for line in lines:
-            if "Error: open failed" in line:
+            if (
+                "Error: open failed" in line
+                or "Error: init mode failed (unable to connect to the target)" in line
+            ):
                 print("Debug probe disconnected from STM32F1 target")
                 disconnect_detected = True
                 break
@@ -302,8 +308,8 @@ with open(fname, "wb") as f:
     # Enable timeout as we'll use this to detect when the attack is done
     ser.timeout = 10
 
+    # Read dump from serial port
     i = 0  # Counter for pretty printing
-
     while True:
         data = ser.read()
 
