@@ -37,7 +37,7 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.0"
+SCRIPT_VERSION = "1.1"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
@@ -49,6 +49,72 @@ default_targetfw_bin = str(script_path.parent / "target" / "target.bin")
 ##############################################
 # Helper functions
 ##############################################
+
+
+# Prints "Pico Pwner" ASCII art
+def print_ascii_art():
+    print(
+        "  ▄███████▄  ▄█   ▄████████  ▄██████▄          ▄███████▄  ▄█     █▄  ███▄▄▄▄      ▄████████    ▄████████ "
+    )
+    print(
+        " ███    ███ ███  ███    ███ ███    ███        ███    ███ ███     ███ ███▀▀▀██▄   ███    ███   ███    ███ "
+    )
+    print(
+        " ███    ███ ███▌ ███    █▀  ███    ███        ███    ███ ███     ███ ███   ███   ███    █▀    ███    ███ "
+    )
+    print(
+        " ███    ███ ███▌ ███        ███    ███        ███    ███ ███     ███ ███   ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ "
+    )
+    print(
+        "▀█████████▀ ███▌ ███        ███    ███       ▀█████████▀ ███     ███ ███   ███ ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   "
+    )
+    print(
+        " ███        ███  ███    █▄  ███    ███        ███        ███     ███ ███   ███   ███    █▄  ▀███████████ "
+    )
+    print(
+        " ███        ███  ███    ███ ███    ███        ███        ███ ▄█▄ ███ ███   ███   ███    ███   ███    ███ "
+    )
+    print(
+        "▄████▀      █▀   ████████▀   ▀██████▀        ▄████▀       ▀███▀███▀   ▀█   █▀    ██████████   ███    ███ "
+    )
+    print(
+        "                                                                                              ███    ███ "
+    )
+
+
+# Prints the metadata of the script (author, version, etc.)
+def print_metadata():
+    print("Credits: Johannes Obermaier, Marc Schink and Kosma Moczek")
+    print("Author: Patrick Pedersen <ctx.xda@gmail.com>")
+    print("Script Version: " + SCRIPT_VERSION)
+    print("Requires Attack-Board Firmware Version: " + REQ_ATTACK_BOARD_VERSION)
+
+
+# Prints the attack instructions
+def print_instructions():
+    print("Instructions:")
+    print("1. Flash the attack firmware to the Pi Pico")
+    print(
+        "2. Connect the Pi Pico to the STM32F1 target as follows (left Pico, right STM):"
+    )
+    print("    GND -> GND     ")
+    print("     0  -> UART0 RX")
+    print("     1  -> UART0 TX")
+    print("     2  -> 3V3     ")
+    print("     4  -> NRST    ")
+    print("     5  -> BOOT0   ")
+    print("3. Follow the instructions provided by this script")
+    print("For more detailed steps, see the README.md file.")
+
+
+# Prints welcome message
+def print_welcome():
+    print("")
+    print_ascii_art()
+    print_metadata()
+    print("")
+    print_instructions()
+    print("")
 
 
 # Returns true if the serial port is used
@@ -230,13 +296,10 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# Check if targetfw.bin exists
-if Path(args.targetfw).is_file() == False:
-    print("Could not find target firmware binary: " + args.targetfw)
-    print(
-        "Please build the target firmware first or specify the path to the binary via the -t option"
-    )
-    exit(1)
+# If -i is specified, print instructions and exit
+if args.instructions:
+    print_instructions()
+    exit(0)
 
 # Check if openocd version is >= MIN_OPENOCD_VERSION
 if not openocd_version_geq(MIN_OPENOCD_VERSION):
@@ -246,56 +309,16 @@ if not openocd_version_geq(MIN_OPENOCD_VERSION):
     )
     exit(1)
 
-print("")
-print(
-    "  ▄███████▄  ▄█   ▄████████  ▄██████▄          ▄███████▄  ▄█     █▄  ███▄▄▄▄      ▄████████    ▄████████ "
-)
-print(
-    " ███    ███ ███  ███    ███ ███    ███        ███    ███ ███     ███ ███▀▀▀██▄   ███    ███   ███    ███ "
-)
-print(
-    " ███    ███ ███▌ ███    █▀  ███    ███        ███    ███ ███     ███ ███   ███   ███    █▀    ███    ███ "
-)
-print(
-    " ███    ███ ███▌ ███        ███    ███        ███    ███ ███     ███ ███   ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ "
-)
-print(
-    "▀█████████▀ ███▌ ███        ███    ███       ▀█████████▀ ███     ███ ███   ███ ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   "
-)
-print(
-    " ███        ███  ███    █▄  ███    ███        ███        ███     ███ ███   ███   ███    █▄  ▀███████████ "
-)
-print(
-    " ███        ███  ███    ███ ███    ███        ███        ███ ▄█▄ ███ ███   ███   ███    ███   ███    ███ "
-)
-print(
-    "▄████▀      █▀   ████████▀   ▀██████▀        ▄████▀       ▀███▀███▀   ▀█   █▀    ██████████   ███    ███ "
-)
-print(
-    "                                                                                              ███    ███ "
-)
+# Check if targetfw.bin exists
+if Path(args.targetfw).is_file() == False:
+    print("Could not find target firmware binary: " + args.targetfw)
+    print(
+        "Please build the target firmware first or specify the path to the binary via the -t option"
+    )
+    exit(1)
 
-print("Credits: Johannes Obermaier, Marc Schink and Kosma Moczek")
-print("Author: Patrick Pedersen <ctx.xda@gmail.com>")
-print("Script Version: " + SCRIPT_VERSION)
-print("Requires Attack-Board Firmware Version: " + REQ_ATTACK_BOARD_VERSION)
-
-print("")
-print("Instructions:")
-print("1. Flash the attack firmware to the Pi Pico")
-print("2. Connect the Pi Pico to the STM32F1 target as follows (left Pico, right STM):")
-print("    GND -> GND     ")
-print("     0  -> UART0 RX")
-print("     1  -> UART0 TX")
-print("     2  -> 3V3     ")
-print("     4  -> NRST    ")
-print("     5  -> BOOT0   ")
-print("3. Follow the instructions provided by this script")
-print("For more detailed steps, see the README.md file.")
-print("")
-
-if args.instructions:
-    exit(0)
+# Print welcome message
+print_welcome()
 
 # If no output file is specified, forward output to /dev/null
 fname = args.output
