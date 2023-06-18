@@ -1,6 +1,6 @@
 # STM32F1 Pico Pwner <!-- omit in toc -->
 
-![Banner](img/banner.gif)
+![Showcase](img/showcase.gif)
 
 A Pi Pico implementation of Johannes Obermaier's, Marc Schink's and Kosma Moczek's Glitch and FPB attack to bypass RDP (read-out protection) level 1 on STM32F1 chips.
 
