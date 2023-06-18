@@ -57,7 +57,7 @@ int main(void)
 	uart1Ctrl[2] = 0x00000341u;
 	uart1Ctrl[3] = 0x0000200Cu;
 
-	/* Print start magic to inform the host that
+	/* Print start magic to inform the attack board that
 	   we are going to dump */
 	for (uint32_t i = 0; i < sizeof(DUMP_START_MAGIC); i++) {
 		writeChar(DUMP_START_MAGIC[i]);
