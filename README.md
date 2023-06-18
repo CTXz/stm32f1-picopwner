@@ -1,5 +1,7 @@
 # STM32F1 Pico Pwner <!-- omit in toc -->
 
+![Banner](img/banner.gif)
+
 A Pi Pico implementation of Johannes Obermaier's, Marc Schink's and Kosma Moczek's Glitch and FPB attack to bypass RDP (read-out protection) level 1 on STM32F1 chips.
 
 The paper describing the attack can be found [here](https://www.usenix.org/system/files/woot20-paper-obermaier.pdf) along with
@@ -231,7 +233,7 @@ it the `NRST` pin drops low. Due to the short time it takes for the `NRST` pin t
 ### Step 3: Exploit Firmware - Stage 1
 
 The STM32F1 is now booted into SRAM and the exploit firmware's first stage is executed. Altough we have gotten rid of the RDP lock caused by condition 1, we
-we are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the BOOT0 pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
+we are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the `BOOT0` pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
 
 ### Step 4: Exploit Firmware - Stage 2
 
