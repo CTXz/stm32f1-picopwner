@@ -69,7 +69,7 @@ $ cd stm32f1-picopwner
 
 ## Building and flashing the attack firmware onto the Pi Pico
 
-> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the pre-built `attack_v1.0.uf2` file from the [releases page](TODO)
+> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the pre-built `attack_v1.0.uf2` file from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
 
 Start out be entering the `attack` directory:
 ```bash
@@ -97,7 +97,7 @@ If everything went well, you should now have a `attack.uf2` file in your build d
 
 ## Building the target board exploit firmware
 
-> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the pre-built `target.bin` file from the [releases page](TODO)
+> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the pre-built `target_v1.0.bin` file from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
 
 The attack relies on the target STM32F1 board getting a exploit firmware temporarily flashed onto its SRAM. This firmware contains a two-stage exploit that will dump the target board's flash memory to the serial port upon completion.
 
