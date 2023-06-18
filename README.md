@@ -134,14 +134,16 @@ Below is a picture that shows the hardware setup using a Blue Pill board:
 
 1. Begin by connecting connecting the Pi Pico to your PC via USB. Your Pi Pico as well as the target board should now be powered on.
 
-> Note: Depending on the target board, it may not be obvious whether the target board is powered on or not. One way to confirm that the target board is powered on is to check if the `NRST` pin is being pulled high. You can also confirm the target board receives power by connect a debug probe **without** the 3V3 pin connected and check if communication through OpenOCD is possible.
+> Note: Depending on the target board, it may not be obvious whether the STM32F1 is powered on or not. One way to confirm that the targeted STM32F1 is 
+> receiving power is to check if the `NRST` pin is being pulled high. Another method to confirm whether the targeted STM32F1 is receiving power is to
+> connect a debug probe **without** the 3.3V pin connected and check if communication through OpenOCD is possible.
 
-> Note: If you are confident that the power-related pins are connected correctly, but the target board still does not appear to be powered on, the 
-> target board may be drawing too much current from the Pi Pico's GPIO. In this case, you will need to buffer the GPIO responsible for providing power
-> (`GPIO2`) with a BJT or MOSFET.
+> Note: If you are confident that the power-related pins are connected correctly, but the target board still does not appear to be powered on, then 
+> the target board may be drawing too much current from the Pi Pico's GPIO. In this case, you will need to buffer the GPIO responsible for providing
+> power (`GPIO2`) with a BJT or MOSFET.
 
-1. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
-2. Create a new terminal window in the top of this repository and run the dump script:
+2. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
+3. Create a new terminal window in the top of this repository and run the dump script:
 ```bash
 $ python3 dump.py -p /dev/ttyACMx -o dump.bin
 ```
@@ -153,7 +155,7 @@ print its content to the terminal.**
 > Note: If you decided to use a release binary instead of building the target firmware yourself, you will need to specify the path to the binary using the
 > `-t` flag or else the script will attempt to look for the binary in `target/target.bin` by default.
 
-1. From this point on, simply follow the instructions printed by the script.
+4. From this point on, simply follow the instructions printed by the script.
 
 ## Troubleshooting
 
