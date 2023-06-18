@@ -347,7 +347,7 @@ else:
             print("Please respond with 'y' or 'n'")
 
 # Upload the target firmware to SRAM
-print("Press any key to load the target exploit firmware to SRAM")
+print("Press enter to load the target exploit firmware to SRAM")
 input()
 upload_target_fw(args.targetfw)
 print("Target firmware loaded to SRAM")
@@ -364,7 +364,7 @@ with open(fname, "wb") as f:
     # Wait for user input to launch attack
     print("")
     print("Attack ready")
-    print("Press any key to start dumping firmware")
+    print("Press enter to start dumping firmware")
     input()
     ser.write(b"1")
 
