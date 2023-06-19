@@ -40,7 +40,7 @@ its original implementation [here](https://github.com/JohannesObermaier/f103-ana
 - A PC running Linux
 - A Raspberry Pi Pico (or any other RP2040 devboard)
 - A debug probe (e.g. a ST-Link V2)
-- A STM32F1 target board (in this repo's case a RDP locked Blue Pill is used)
+- An STM32F1 target board (in this repo's case a RDP locked Blue Pill is used)
 
 ## Pre-requisites
 
@@ -50,7 +50,7 @@ Please ensure the following dependencies are installed on your system:
 - [Python3](https://www.python.org/)
 - [PySerial](https://pythonhosted.org/pyserial/)
 
-Additionally, install these additional dependencies if you intend to build the attack board and target board exploit firmware yourself:
+Furthermore, install these additional dependencies if you intend to build the attack board and target board exploit firmware yourself:
 
 - [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk)
 - [arm-none-eabi-gcc](https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain)
@@ -228,7 +228,7 @@ This property of the SRAM will be exploited in the attack to preserve SRAM conte
 The last part that needs a seperate explanation is the 2-Stage exploit firmware that will be loaded into the STM32F1's SRAM. The code for the target exploit firmware can be found in the [target](target) directory.
 
 #### Stage 1
-The initial phase of the exploit firmware involves configuring the FPB (Flash Patch and Breakpoint unit) to intercept the retrieval of a reset interrupt. This is achieved by patching the reset vector fetch located at `0x00000004`, redirecting the execution flow to the entry point of the exploit firmware's second stage. Consequently, when the STM32F1 is reset and set to boot from flash memory, the RDP lock is effectively removed and since a reset interrupt triggers a reset fetch, the execution immediately proceeds to the second stage entry point situated in the SRAM. In short, stage one cleverly deceives the STM32F1 into executing code from the SRAM instead of its intended execution from flash memory.
+The initial phase of the exploit firmware involves configuring the FPB (Flash Patch and Breakpoint unit) to intercept the retrieval of a reset interrupt. This is achieved by patching the reset vector fetch located at `0x00000004`, thus redirecting the execution flow to the entry point of the exploit firmware's second stage. Consequently, when the STM32F1 is reset and set to boot from flash memory, the RDP lock is effectively removed and since a reset interrupt triggers a reset fetch, the execution immediately proceeds to the second stage entry point situated in the SRAM. In short, stage one cleverly deceives the STM32F1 into executing code from the SRAM instead of its intended execution from flash memory.
 
 #### Stage 2
 By the time stage-2 has been entered, the read-out protection has been completely circumvented. The second stage of the exploit firmware simply reads and dumps the contents of the flash memory to the serial port, where it is then read by the Pi Pico and further directed to the host computer via USB.
