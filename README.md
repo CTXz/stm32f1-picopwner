@@ -68,7 +68,7 @@ $ cd stm32f1-picopwner
 
 ## Building and flashing the attack firmware onto the Pi Pico
 
-> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the pre-built `attack_v1.0.uf2` file from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
+> If you wish to skip the build process and just flash the attack firmware onto your Pi Pico, you can download the latest pre-built attack firmware from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
 
 Start out be entering the `attack` directory:
 ```bash
@@ -96,7 +96,7 @@ If everything went well, you should now have a `attack.uf2` file in your build d
 
 ## Building the target board exploit firmware
 
-> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the pre-built `target_v1.0.bin` file from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
+> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the latest pre-built target firmware from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
 
 The attack relies on the target STM32F1 board getting a exploit firmware temporarily flashed onto its SRAM. This firmware contains a two-stage exploit that will dump the target board's flash memory to the serial port upon completion.
 
@@ -106,6 +106,14 @@ To compile the target firmware, enter the `target` directory and run `make`:
 $ cd target
 $ make
 ```
+
+By default, this will build a target firmware that dumps to the STM32F1's `USART1` peripheral. If you wish to dump the firmware to a different USART peripheral, you can provide `usart1`, `usart2` or `usart3` as an argument to `make`. For example, to build a target firmware that dumps to `USART3`, run:
+
+```bash
+$ make usart3
+```
+
+This is particularly useful the target board hardware provides easier access to a different USART peripheral.
 
 If everything went well, you should now have a `target.bin` file in your `target` directory. This file will be flashed onto the target board's SRAM during the attack.
 
@@ -118,15 +126,22 @@ Next, connect your Pi Pico to your target board as shown in the table bellow:
 | Pi Pico          | STM32F1   |
 |------------------|-----------|
 | GND              | GND       |
-| GPIO0 / UART0_TX | USART1_RX |
-| GPIO1 / UART0_RX | USART1_TX |
+| GPIO0 / UART0_TX | USARTx_RX |
+| GPIO1 / UART0_RX | USARTx_TX |
 | GPIO2            | VDD       |
 | GPIO4            | NRST      |
 | GPIO5            | BOOT0     |
 
-Should the USART1 pins on your target STM32F1 board be occupied, you will have to alter the target board exploit firmware to use a different USART peripheral for now. Support for other USART peripherals in this repo will be added in the future.
+Where `USARTx_RX` and `USARTx_TX` are the `RX` and `TX` pins of the USART peripheral that the target firmware has been built for.
 
-Below is a picture that shows the hardware setup using a Blue Pill board:
+The USART pins for STM32F1-series chips are assigned as follows:
+| USART Peripheral | RX  | TX  |
+|------------------|-----|-----|
+| USART1           | PA10| PA9 |
+| USART2           | PA3 | PA2 |
+| USART3           | PB11| PB10|
+
+Below is a picture that shows the hardware setup using a Blue Pill board as the target board with `USART1` used to dump the flash memory:
 
 ![Blue Pill Example](img/BPExample.png)
 
@@ -157,6 +172,9 @@ print its content to the terminal.**
 
 4. From this point on, simply follow the instructions printed by the script.
 
+If the dump script worked, you should now have a complete dump of the target board's flash memory in the `dump.bin` file (or whatever you named it).
+Please note that it is normal for the dump to contain a lot of `0xFF` bytes at the end due to unused flash typically being erased to `0xFF`.
+
 ## Troubleshooting
 
 Should the dump script time out and fail, it could be the result of one of the following issues:
@@ -164,12 +182,10 @@ Should the dump script time out and fail, it could be the result of one of the f
 - The `BOOT1` pin on the target board is being set high
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
+- The wrong USART peripheral was selected when building the target firmware
 - The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a BJT or MOSFET)
 - The power board has a too high capacitance on the power and/or reset pins (Try removing any power and/or reset capacitors)
 - The STM32F1 board is not genuine or maybe too new (there are rumors that the exploit has been patched in 2020+ revisions of STM32F1 chips)
-
-If the dump script worked, you should now have a complete dump of the target board's flash memory in the `dump.bin` file (or whatever you named it).
-Please note that it is normal for the dump to contain a lot of `0xFF` bytes at the end due to unused flash typically being erased to `0xFF`.
 
 # How does the attack work?
 
