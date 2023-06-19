@@ -7,21 +7,39 @@
  * by the attack board and lastly sent over USB serial
  * to create a dump file.
  *
+ * Targer Firmware Version: 1.1
+ *
  * This code is a trimmed down version of the original
  * root shell code published here:
  * https://github.com/JohannesObermaier/f103-analysis/tree/master/h3
  * It removes the root shell functionality and goes straight
- * to dumping once booted. Additionally it also fixes the dump
- * using the wrong endianness.
+ * to dumping once booted. It also fixes the dump endianness
+ * and allows you to choose on which USART peripheral to dump.
+ *
+ * To select the USART, provide either of the following defines when compiling:
+ * 	-D USE_USART1
+ * 	-D USE_USART2
+ * 	-D USE_USART3
+ *
  */
 
 #include <stdint.h>
 
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
-uint32_t volatile * const rccApb2 = (uint32_t *) 0x40021018u;
-uint32_t volatile * const ioAModerH = (uint32_t *) 0x40010804u;
-uint32_t volatile * const uart1Ctrl = (uint32_t *) 0x40013800u;
+typedef uint32_t * reg_t;
+
+const volatile reg_t RCC_APB1ENR 	= (reg_t) 0x4002101Cu;
+const volatile reg_t RCC_APB2ENR 	= (reg_t) 0x40021018u;
+const volatile reg_t GPIOA_CRH		= (reg_t) 0x40010804u;
+const volatile reg_t GPIOA_CRL 		= (reg_t) 0x40010800u;
+const volatile reg_t GPIOB_CRH 		= (reg_t) 0x40010C04u;
+const volatile reg_t IO_B_MODE_L 	= (reg_t) 0x40010C00u;
+const volatile reg_t USART1_CTRL 	= (reg_t) 0x40013800u;
+const volatile reg_t USART2_CTRL 	= (reg_t) 0x40004400u;
+const volatile reg_t USART3_CTRL	= (reg_t) 0x40004800u;
+
+volatile reg_t sel_usart_ctrl;
 
 void readChar( uint8_t const chr );
 void writeByte( uint8_t b );
@@ -45,17 +63,96 @@ uint8_t const strHelp[] = 	"Help\r\n-----------\r\n"
                             "H          - Show help \r\n"
                             "---------------\r\n";
 
+#define PIN_CONFIG_ALT_PUSH_PULL 0xB
+#define PIN_CONFIG_INPUT_PULL_UP 0x8
+
+// Intializes USART1
+// Returns the USART1 control register
+reg_t init_usart1()
+{
+	/* Enable Clocks */
+	*RCC_APB2ENR |= (1 << 2); // Input-Output Port A clock enable
+	*RCC_APB2ENR |= (1 << 14); // USART1 clock enable
+
+	/* Configure Pins */
+
+	// Set PA9 (TX) to alternate function push-pull
+	*GPIOA_CRH &= ~(0xF << 4);
+	*GPIOA_CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 4);
+
+	// Set PA10 (RX) to input pull-up
+	*GPIOA_CRH &= ~(0xF << 8);
+	*GPIOA_CRH |= (PIN_CONFIG_INPUT_PULL_UP << 8);
+
+	/* Configure and enable USART1 */
+	USART1_CTRL[2] = 0x00000341u;
+	USART1_CTRL[3] = 0x0000200Cu;
+
+	return USART1_CTRL;
+}
+
+// Intializes USART2
+// Returns the USART2 control register
+reg_t init_usart2()
+{
+	/* USART2 clock enable */
+	*RCC_APB2ENR |= (1 << 2); // Input-Output Port A clock enable
+	*RCC_APB1ENR |= (1 << 17); // USART2 clock enable
+
+	/* Configure Pins */
+
+	// Set PA2 (TX) to alternate function push-pull
+	*GPIOA_CRL &= ~(0xF << 8);
+	*GPIOA_CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+
+	// Set PA3 (RX) to input pull-up
+	*GPIOA_CRL &= ~(0xF << 12);
+	*GPIOA_CRL |= (PIN_CONFIG_INPUT_PULL_UP << 12);
+
+	/* Configure and enable USART2 */
+	USART2_CTRL[2] = 0x00000341u;
+	USART2_CTRL[3] = 0x0000200Cu;
+
+	return USART2_CTRL;
+}
+
+// Intializes USART3
+// Returns the USART3 control register
+reg_t init_usart3()
+{
+	/* USART3 clock enable */
+	*RCC_APB1ENR |= (1 << 18);
+
+	/* IOB Enable */
+	*RCC_APB2ENR |= (1 << 3);
+
+	// Set PB10 (TX) to alternate function push-pull
+	*GPIOB_CRH &= ~(0xF << 8);
+	*GPIOB_CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+
+	// Set PB11 (RX) to input pull-up
+	*GPIOB_CRH &= ~(0xF << 12);
+	*GPIOB_CRH |= (PIN_CONFIG_INPUT_PULL_UP << 12);
+
+	/* Configure and enable USART3 */
+	USART3_CTRL[2] = 0x00000341;
+	USART3_CTRL[3] = 0x0000200C;
+
+	return USART3_CTRL;
+}
+
 int main(void)
 {
-	/* IOA + USART1 clock enable */
-	*rccApb2 = (uint32_t) 0x4004u;
-
-	/* USART1 TX+RX (PA9, PX10) on */
-	*ioAModerH = (uint32_t) 0x444444B4u;
-
-	/* config and enable uart */
-	uart1Ctrl[2] = 0x00000341u;
-	uart1Ctrl[3] = 0x0000200Cu;
+	/* Init USART */
+#if defined(USE_USART1)
+	sel_usart_ctrl = init_usart1();
+#elif defined(USE_USART2)
+	sel_usart_ctrl = init_usart2();
+#elif defined(USE_USART3)
+	sel_usart_ctrl = init_usart3();
+#else
+#error "No USART selected"
+#endif
 
 	/* Print start magic to inform the attack board that
 	   we are going to dump */
@@ -236,11 +333,11 @@ void writeStr( uint8_t const * const str )
 
 void writeChar( uint8_t const chr )
 {
-	while (!(uart1Ctrl[0] & 0x80u)) {
+	while (!(sel_usart_ctrl[0] & 0x80u)) {
 		/* wait */
 	}
 
-	uart1Ctrl[1] = chr;
+	sel_usart_ctrl[1] = chr;
 }
 
 void writeWordLe( uint32_t const word )
