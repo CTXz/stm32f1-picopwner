@@ -38,7 +38,7 @@ its original implementation [here](https://github.com/JohannesObermaier/f103-ana
 ## What you'll need to get started
 
 - A PC running Linux
-- A Raspberry Pi Pico
+- A Raspberry Pi Pico (or any other RP2040 devboard)
 - A debug probe (e.g. a ST-Link V2)
 - A STM32F1 target board (in this repo's case a RDP locked Blue Pill is used)
 
