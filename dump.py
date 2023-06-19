@@ -97,12 +97,12 @@ def print_instructions():
     print(
         "2. Connect the Pi Pico to the STM32F1 target as follows (left Pico, right STM):"
     )
-    print("    GND -> GND     ")
-    print("     0  -> UART0 RX")
-    print("     1  -> UART0 TX")
-    print("     2  -> 3V3     ")
-    print("     4  -> NRST    ")
-    print("     5  -> BOOT0   ")
+    print("    GND -> GND      ")
+    print("     0  -> USART1_RX")
+    print("     1  -> USART1_TX")
+    print("     2  -> VDD      ")
+    print("     4  -> NRST     ")
+    print("     5  -> BOOT0    ")
     print("3. Follow the instructions provided by this script")
     print("For more detailed steps, see the README.md file.")
 
