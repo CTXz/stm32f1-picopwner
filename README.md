@@ -113,7 +113,9 @@ By default, this will build a target firmware that dumps to the STM32F1's `USART
 $ make usart3
 ```
 
-This is particularly useful the target board hardware provides easier access to a different USART peripheral.
+> Note: This is subject to change. In later revisions the USART peripheral will be selected at runtime.
+
+This is particularly useful if the target device provides easier access to a different USART peripheral.
 
 If everything went well, you should now have a `target.bin` file in your `target` directory. This file will be flashed onto the target board's SRAM during the attack.
 
@@ -121,7 +123,7 @@ If everything went well, you should now have a `target.bin` file in your `target
 
 Prior to connecting your Pi Pico to your target board, ensure that the `BOOT1` pin (typically `PB2`, but please refer to your chips datasheet) on your target board is permanently set high by using a Pull-Up resistor (1k - 100k) to 3.3V. **Neglecting to use a pull-up resistor to drive `BOOT1` high can have severe consequences, potentially damaging the pin. This is because the `BOOT1` pin is also used as a GPIO pin, and driving it as a low output without a pull-up resistor could cause a direct short.**
 
-Next, connect your Pi Pico to your target board as shown in the table bellow:
+Next, connect your Pi Pico to your target board as shown in the table below:
 
 | Pi Pico          | STM32F1   |
 |------------------|-----------|
@@ -183,6 +185,7 @@ Should the dump script time out and fail, it could be the result of one of the f
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
 - The wrong USART peripheral was selected when building the target firmware
+- The SRAM entrypoint address is different for your STM32F1 chip (Please refer to [this issue](https://github.com/CTXz/stm32f1-picopwner/issues/1) until different entrypoint addresses are integrated into the script)
 - The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a BJT or MOSFET)
 - The power board has a too high capacitance on the power and/or reset pins (Try removing any power and/or reset capacitors)
 - The STM32F1 board is not genuine or maybe too new (there are rumors that the exploit has been patched in 2020+ revisions of STM32F1 chips)
@@ -195,7 +198,7 @@ Due to the attacks complexity, we must first introduce a couple of the STM32F1's
 
 ### Read-Out Protection (RDP)
 
-Given that this whole repository is about circumventing RDP Level 1, we will skip explaining the differce between RDP Level 0, 1 and 2 (does not apply to F1 chips) and instead focus on the properties of RDP Level 1 that make the attack possible.
+Given that this whole repository is about circumventing RDP Level 1, we will skip explaining the difference between RDP Level 0, 1 and 2 (does not apply to F1 chips) and instead focus on the properties of RDP Level 1 that make the attack possible.
 
 When RDP Level 1 is set, the device will lock down access to flash memory as soon as either of the following conditions are met:
 
@@ -203,9 +206,9 @@ When RDP Level 1 is set, the device will lock down access to flash memory as soo
 - Condition 2: The device is booted into System Memory Mode (`BOOT0` pin is set high, `BOOT1` pin is set low), aka. "Bootloader Mode"
 - Condition 3: The device boots from SRAM (`BOOT0` and `BOOT1` pins are set high), starting execution at address `0x20000000`
 
-It is important to know, that **the read-out protection lock caused by condition 1 will persist even after the debug probe is disconnected and even after a device reset has occured!** In other words, it persists until the next power cycle after the probe has been disconnected. The read-out protection lock caused by condition 2 and 3 will only persist until the next device reset.
+It is important to know, that **the read-out protection lock caused by condition 1 will persist even after the debug probe is disconnected and even after a device reset has occurred!** In other words, it persists until the next power cycle after the probe has been disconnected. The read-out protection lock caused by condition 2 and 3 will only persist until the next device reset.
 
-As we'll see later, the attack uses a glitching exploit to ridden the lock of conidition 1 and then uses a 2-stage firmware exploit to get rid of the locks caused by condition 2 and 3.
+As we'll see later, the attack uses a glitching exploit to ridden the lock of condition 1 and then uses a 2-stage firmware exploit to get rid of the locks caused by condition 2 and 3.
 
 ### The Flash Patch and Breakpoint Unit (FPB)
 
@@ -225,7 +228,7 @@ This property of the SRAM will be exploited in the attack to preserve SRAM conte
 
 ## 2-Stage Exploit Firmware
 
-The last part that needs a seperate explanation is the 2-Stage exploit firmware that will be loaded into the STM32F1's SRAM. The code for the target exploit firmware can be found in the [target](target) directory.
+The last part that needs a separate explanation is the 2-Stage exploit firmware that will be loaded into the STM32F1's SRAM. The code for the target exploit firmware can be found in the [target](target) directory.
 
 #### Stage 1
 The initial phase of the exploit firmware involves configuring the FPB (Flash Patch and Breakpoint unit) to intercept the retrieval of a reset interrupt. This is achieved by patching the reset vector fetch located at `0x00000004`, thus redirecting the execution flow to the entry point of the exploit firmware's second stage. Consequently, when the STM32F1 is reset and set to boot from flash memory, the RDP lock is effectively removed and since a reset interrupt triggers a reset fetch, the execution immediately proceeds to the second stage entry point situated in the SRAM. In short, stage one cleverly deceives the STM32F1 into executing code from the SRAM instead of its intended execution from flash memory.
@@ -235,7 +238,7 @@ By the time stage-2 has been entered, the read-out protection has been completel
 
 ## The Attack
 
-With all of the above explained, we can now finally explain the attack in detail. The steps bellow assume the hardware setup described in the [Hardware Setup](#hardware-setup) section.
+With all of the above explained, we can now finally explain the attack in detail. The steps below assume the hardware setup described in the [Hardware Setup](#hardware-setup) section.
 
 ### Step 1: Preparation
 
@@ -245,17 +248,16 @@ During the first step, the debug probe is connected to the target STM32F1 board.
 
 The goal here is to get rid of the RDP lock caused by condition 1, as well as booting into SRAM. To achieve this without wiping the exploit firmware from SRAM,
 we will use a power glitching attack. The attack board (Pi Pico) will first prepare `BOOT0` high and then toggle the power of the target board off. After switching the
-power off, the attack board will monitor the `NRST` pin's logic state and immidiately restore power once it the `NRST` pin drops low. Due to the short time it takes for
+power off, the attack board will monitor the `NRST` pin's logic state and immediately restore power once it the `NRST` pin drops low. Due to the short time it takes for
 the `NRST` pin to drop low, the SRAM contents will remain preserved (due to data retention) and the STM32F1 will boot into SRAM since `BOOT0` and `BOOT1` are now both 
-high. The RDP lock caused by condition 1 will also be ridden since the debug probe is not connected to the target board anymore and a power cycle has occured.
+high. The RDP lock caused by condition 1 will also be ridden since the debug probe is not connected to the target board any more and a power cycle has occurred.
 
 ![Power Glitching](img/PowerGlitching.png)
 [Source](https://www.usenix.org/system/files/woot20-paper-obermaier.pdf)
 
 ### Step 3: Exploit Firmware - Stage 1
 
-The STM32F1 is now booted into SRAM and the exploit firmware's first stage is executed. Altough we have gotten rid of the RDP lock caused by condition 1, we
-we are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the `BOOT0` pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
+The STM32F1 is now booted into SRAM and the exploit firmware's first stage is executed. Although we have gotten rid of the RDP lock caused by condition 1, we  are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the `BOOT0` pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
 
 ### Step 4: Exploit Firmware - Stage 2
 
