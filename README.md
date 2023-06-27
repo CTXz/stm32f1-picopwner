@@ -181,7 +181,7 @@ Please note that it is normal for the dump to contain a lot of `0xFF` bytes at t
 
 Should the dump script time out and fail, it could be the result of one of the following issues:
 - The debug probe is still connected to the target board
-- The `BOOT1` pin on the target board is being set high
+- The `BOOT1` pin on the target board is not set high
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
 - The wrong USART peripheral was selected when building the target firmware
