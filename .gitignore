@@ -1,4 +1,6 @@
 .elf
 .o
+target/*.bin
+target/build
 attack/build
 .vscode/
