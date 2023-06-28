@@ -96,7 +96,7 @@ If everything went well, you should now have a `attack.uf2` file in your build d
 
 ## Building the target board exploit firmware
 
-> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the latest pre-built target firmware from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
+> If you wish to skip the build process and just flash the target board exploit firmware onto your target STM32F1 board, you can download the latest pre-built target firmware binaries from the [releases page](https://github.com/CTXz/stm32f1-picopwner/releases)
 
 The attack relies on the target STM32F1 board getting a exploit firmware temporarily flashed onto its SRAM. This firmware contains a two-stage exploit that will dump the target board's flash memory to the serial port upon completion.
 
@@ -107,17 +107,10 @@ $ cd target
 $ make
 ```
 
-By default, this will build a target firmware that dumps to the STM32F1's `USART1` peripheral. If you wish to dump the firmware to a different USART peripheral, you can provide `usart1`, `usart2` or `usart3` as an argument to `make`. For example, to build a target firmware that dumps to `USART3`, run:
+This will output multiple binaries with the name `target_nnn_usartx.bin`. The `nnn` part of the filename refers to the [SRAM entry offset](https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043) at which the target firmware is loaded, and the `x` part of the filename refers to the USART peripheral used to
+dump the flash memory contents on the target device. The dump script will automatically detect the correct SRAM offset and prompt you to select the correct USART peripheral in order to know which binary to flash onto the target board.
 
-```bash
-$ make usart3
-```
-
-> Note: This is subject to change. In later revisions the USART peripheral will be selected at runtime.
-
-This is particularly useful if the target device provides easier access to a different USART peripheral.
-
-If everything went well, you should now have a `target.bin` file in your `target` directory. This file will be flashed onto the target board's SRAM during the attack.
+Allowing to chose the USART peripheral provides the big advantage of being able to use the most convenient/accessable USART pins on the target board.
 
 ## Hardware Setup
 
@@ -126,7 +119,7 @@ Prior to connecting your Pi Pico to your target board, ensure that the `BOOT1` p
 Next, connect your Pi Pico to your target board as shown in the table below:
 
 | Pi Pico          | STM32F1   |
-|------------------|-----------|
+| ---------------- | --------- |
 | GND              | GND       |
 | GPIO0 / UART0_TX | USARTx_RX |
 | GPIO1 / UART0_RX | USARTx_TX |
@@ -134,14 +127,15 @@ Next, connect your Pi Pico to your target board as shown in the table below:
 | GPIO4            | NRST      |
 | GPIO5            | BOOT0     |
 
-Where `USARTx_RX` and `USARTx_TX` are the `RX` and `TX` pins of the USART peripheral that the target firmware has been built for.
+Where `USARTx_RX` and `USARTx_TX` are the `RX` and `TX` pins of the USART peripheral that will be used to dump the flash memory contents.
 
 The USART pins for STM32F1-series chips are assigned as follows:
-| USART Peripheral | RX  | TX  |
-|------------------|-----|-----|
-| USART1           | PA10| PA9 |
-| USART2           | PA3 | PA2 |
-| USART3           | PB11| PB10|
+
+| USART Peripheral | RX   | TX   |
+| ---------------- | ---- | ---- |
+| USART1           | PA10 | PA9  |
+| USART2           | PA3  | PA2  |
+| USART3           | PB11 | PB10 |
 
 Below is a picture that shows the hardware setup using a Blue Pill board as the target board with `USART1` used to dump the flash memory:
 
@@ -159,8 +153,7 @@ Below is a picture that shows the hardware setup using a Blue Pill board as the 
 > the target board may be drawing too much current from the Pi Pico's GPIO. In this case, you will need to buffer the GPIO responsible for providing
 > power (`GPIO2`) with a BJT or MOSFET.
 
-2. Next, connect your debug probe (ex. ST-Link V2) to your target STM32F1 board.
-3. Create a new terminal window in the top of this repository and run the dump script:
+2. Create a new terminal window in the top of this repository and run the dump script:
 ```bash
 $ python3 dump.py -p /dev/ttyACMx -o dump.bin
 ```
@@ -169,10 +162,11 @@ Where `/dev/ttyACMx` is the serial port that your Pi Pico is connected to. If le
 `dump.bin` is the file that the target board's flash memory will be dumped to. **If left unspecified, the script will not write the dump to a file and only
 print its content to the terminal.**
 
-> Note: If you decided to use a release binary instead of building the target firmware yourself, you will need to specify the path to the binary using the
-> `-t` flag or else the script will attempt to look for the binary in `target/target.bin` by default.
+> Note: If you decided to use release binaries instead of building the target firmware yourself, you will need to specify the path to the directory holding
+> the target firmware binaries using the `-t` flag. By default, the script will attempt to look for the binaries in the `target/` directory of the cloned
+> repository.
 
-4. From this point on, simply follow the instructions printed by the script.
+1. From this point on, simply follow the instructions printed by the script.
 
 If the dump script worked, you should now have a complete dump of the target board's flash memory in the `dump.bin` file (or whatever you named it).
 Please note that it is normal for the dump to contain a lot of `0xFF` bytes at the end due to unused flash typically being erased to `0xFF`.
@@ -184,8 +178,8 @@ Should the dump script time out and fail, it could be the result of one of the f
 - The `BOOT1` pin on the target board is not set high
 - The Pi Pico has not been connected properly to the target board (Ensure the GNDs are connected!)
 - The Pi Pico has not been flashed with the attack firmware
-- The wrong USART peripheral was selected when building the target firmware
-- The SRAM entrypoint address is different for your STM32F1 chip (Please refer to [this issue](https://github.com/CTXz/stm32f1-picopwner/issues/1) until different entrypoint addresses are integrated into the script)
+- The wrong serial port was selected (See `-p` flag)
+- The wrong target USART peripheral was selected
 - The power draw of the target board is too high for the Pi Pico to handle (Try buffering the power pin with a BJT or MOSFET)
 - The power board has a too high capacitance on the power and/or reset pins (Try removing any power and/or reset capacitors)
 - The STM32F1 board is not genuine or maybe too new (there are rumors that the exploit has been patched in 2020+ revisions of STM32F1 chips)
@@ -257,7 +251,7 @@ high. The RDP lock caused by condition 1 will also be ridden since the debug pro
 
 ### Step 3: Exploit Firmware - Stage 1
 
-The STM32F1 is now booted into SRAM and the exploit firmware's first stage is executed. Although we have gotten rid of the RDP lock caused by condition 1, we  are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the `BOOT0` pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
+The STM32F1 has now booted into SRAM and the exploit firmware's first stage is executed. Although we have gotten rid of the RDP lock caused by condition 1, we  are now faced with the RDP lock caused by condition 3. As already described above, the first stage of the exploit firmware will patch the reset vector fetch address to jump to the second stage of the exploit firmware. Once the patch has been applied, the attack board pulls the `BOOT0` pin low and resets the target board using the `NRST` pin. The STM32F1 will receive a reset interrupt and execute a reset vector fetch which will cause it to jump to the second stage of the exploit firmware. Simultaneously the rdp lock caused by condition 3 has been ridden since the STM32F1 believes is now booting from flash memory again (`BOOT0` is low).
 
 ### Step 4: Exploit Firmware - Stage 2
 

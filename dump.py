@@ -37,14 +37,17 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.1"
+SCRIPT_VERSION = "1.2"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
 MIN_OPENOCD_VERSION = "0.10.0"
 
+# See See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
+SUPPORTED_SRAM_ENTRY_OFFSETS = [0x108, 0x1CC, 0x1E0]
+
 script_path = Path(__file__).resolve()
-default_targetfw_bin = str(script_path.parent / "target" / "target.bin")
+default_targetfw_dir = str(script_path.parent / "target")
 
 ##############################################
 # Helper functions
@@ -190,26 +193,29 @@ def openocd_run(interface: str, traget: str, cmds: list):
     return subprocess.run(splist, capture_output=True, text=True)
 
 
-# Waits until the debug probe is connected
+# Returns true if the debug probe is connected
 # This is done by attempting to halt the target
-# until openocd does not return an error
+# and checking if openocd returns a "halted" message
+def debug_probe_connected():
+    result = openocd_run(
+        "stlink.cfg",
+        "stm32f1x.cfg",
+        ["init", "reset halt", "targets", "exit"],
+    )
+
+    for line in result.stderr.splitlines():
+        if (
+            "Error: open failed" in line
+            or "Error: init mode failed (unable to connect to the target)" in line
+        ):
+            return False
+
+    return True
+
+
+# Waits until the debug probe is connected
 def wait_dbg_probe_connect():
-    while True:
-        result = openocd_run(
-            "stlink.cfg",
-            "stm32f1x.cfg",
-            ["init", "reset halt", "targets", "exit"],
-        )
-
-        for line in result.stderr.splitlines():
-            if "halted" in line:
-                return
-            elif "Error: expected 1 of 1" in line:
-                raise Exception(
-                    "Connected device does not be appear to be an STM32F1 device\nopenocd output: "
-                    + line
-                )
-
+    while not debug_probe_connected():
         time.sleep(1)  # Wait for 1 second before retrying
 
 
@@ -218,21 +224,8 @@ def wait_dbg_probe_connect():
 # until openocd returns an "open failed" error
 # or a "init mode failed" error
 def wait_dbg_probe_disconnect():
-    while True:
-        result = openocd_run(
-            "stlink.cfg",
-            "stm32f1x.cfg",
-            ["init", "reset halt", "targets", "exit"],
-        )
-
-        for line in result.stderr.splitlines():
-            if (
-                "Error: open failed" in line
-                or "Error: init mode failed (unable to connect to the target)" in line
-            ):
-                return
-
-        time.sleep(1)  # Wait for 1 second before retrying
+    while debug_probe_connected():
+        time.sleep(1)
 
 
 # Fetches the read protection status of the target
@@ -256,6 +249,31 @@ def get_rdp_status():
     )
 
 
+# Returns the entry point address of the SRAM based on the reset vector
+# See See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
+def get_sram_entry_point():
+    result = openocd_run(
+        "stlink.cfg",
+        "stm32f1x.cfg",
+        ["init", "reset halt", "exit"],
+    )
+
+    for line in result.stderr.splitlines():
+        pc_str = "pc: 0x20000"
+        ret = line.find(pc_str)
+        if ret != -1:
+            lsb_3b_start = ret + len(pc_str)
+            lsb_3b_end = lsb_3b_start + 3
+            return int(line[lsb_3b_start:lsb_3b_end], 16)
+
+    raise Exception("Could not determine SRAM entry point\nopenocd output: " + line)
+
+
+# Checks if the provided entry point address is supported
+def sram_entry_offset_supported(entry_addr: int):
+    return entry_addr in SUPPORTED_SRAM_ENTRY_OFFSETS
+
+
 # Uploads the target firmware to the SRAM of the target
 def upload_target_fw(fw_path: str):
     result = openocd_run(
@@ -269,6 +287,21 @@ def upload_target_fw(fw_path: str):
             raise Exception(
                 "Failed to load target firmware to SRAM\nopenocd output: " + line
             )
+
+
+# Gets the correct target firmware binary based on the provided entry point address
+# and usart
+def get_target_fw_bin(bin_path: str, entry_addr: int, usart: int):
+    fname = "target_" + str(hex(entry_addr))[2:] + "_usart" + str(usart) + ".bin"
+    path = bin_path + "/" + fname
+    if Path(path).is_file():
+        return path
+    else:
+        raise Exception(
+            "Could not find target firmware binary: "
+            + path
+            + "\n Please buid or download the required target firmware binary first"
+        )
 
 
 ##############################################
@@ -290,9 +323,15 @@ parser.add_argument(
 parser.add_argument(
     "-t",
     "--targetfw",
-    help="Path to target exploit firmware",
+    help="Path to target firmware dir",
     required=False,
-    default=default_targetfw_bin,
+    default=default_targetfw_dir,
+)
+parser.add_argument(
+    "-u",
+    "--usart",
+    help="USART used on the STM32F1 target to dump the firmware",
+    choices=["1", "2", "3"],
 )
 args = parser.parse_args()
 
@@ -309,11 +348,18 @@ if not openocd_version_geq(MIN_OPENOCD_VERSION):
     )
     exit(1)
 
-# Check if targetfw.bin exists
-if Path(args.targetfw).is_file() == False:
-    print("Could not find target firmware binary: " + args.targetfw)
+targetfw_path = Path(args.targetfw)
+
+# Check if target firmware directory exists and is a directory
+if targetfw_path.is_dir() == False:
+    print(args.targetfw + " is not a directory")
+    exit(1)
+
+# Check if at least one .bin file is in the target firmware directory
+if not list(targetfw_path.glob("*.bin")):
+    print("No target firmware binaries found in " + args.targetfw)
     print(
-        "Please build the target firmware first or specify the path to the binary via the -t option"
+        "Please build the target firmware binaries first or provide a directory with at least one target firmware binary"
     )
     exit(1)
 
@@ -325,6 +371,15 @@ fname = args.output
 if fname is None:
     print("WARNING: No output file specified, dumping to /dev/null")
     fname = "/dev/null"
+
+# Check if debug probe is already connected
+# If so, request debug probe to be disconnected
+# This is required to ensure the the target is power
+# cycled when the Pi is reset/reconnected during the
+# next step
+if debug_probe_connected():
+    print("Debug probe already connected, please disconnect the debug probe for now")
+    wait_dbg_probe_disconnect()
 
 # Check if pico is already connected to the specified serial port
 # If so, request pico to be reset to ensure a clean state
@@ -369,16 +424,53 @@ else:
         else:
             print("Please respond with 'y' or 'n'")
 
-# Upload the target firmware to SRAM
-print("Press enter to load the target exploit firmware to SRAM")
+# Get the entry point address of the SRAM
+sram_entry_point = get_sram_entry_point()
+print(
+    "Detected SRAM entry point offset: "
+    + str(hex(sram_entry_point))
+    + " ("
+    + str(hex(0x20000000 + sram_entry_point))
+    + ")"
+)
+if sram_entry_offset_supported(sram_entry_point) == False:
+    print("SRAM entry point offset is not supported, expected: 0x108, 0x1CC or 0x1E")
+    print("If you believe this is a valid entry point, please submit an issue")
+    exit(1)
+
+# Select USART if not provided alreay
+if args.usart is None:
+    print("Please select the USART used by the STM32F1 target to dump firmware")
+    print("1: USART1")
+    print("2: USART2")
+    print("3: USART3")
+    print("Enter 1, 2 or 3: ", end="")
+    while True:
+        choice = input()
+        if choice == "1":
+            usart = "1"
+            break
+        elif choice == "2":
+            usart = "2"
+            break
+        elif choice == "3":
+            usart = "3"
+            break
+        else:
+            print("Please enter 1, 2 or 3: ", end="")
+else:
+    usart = args.usart
+
+# Upload the target firmware to the SRAM
+print("Press enter to load the target exploit firmware to the SRAM")
 input()
-upload_target_fw(args.targetfw)
-print("Target firmware loaded to SRAM")
+upload_target_fw(get_target_fw_bin(args.targetfw, sram_entry_point, usart))
+print("Target firmware loaded to the SRAM")
 
 # Ensure user disconnects the debug probe from the target
 print("Waiting for debug probe to be disconnected...")
 print(
-    "Warning: Disconnect the debug probe from the target, not just the host's USB port!"
+    "Warning: Disconnect the debug probe from the target, not just the host USB port!"
 )
 wait_dbg_probe_disconnect()
 print("Debug probe disconnected from STM32F1 target")
