@@ -107,8 +107,7 @@ $ cd target
 $ make
 ```
 
-This will output multiple binaries with the name `target_nnn_usartx.bin`. The `nnn` part of the filename refers to the [SRAM entry offset](https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043) at which the target firmware is loaded, and the `x` part of the filename refers to the USART peripheral used to
-dump the flash memory contents on the target device. The dump script will automatically detect the correct SRAM offset and prompt you to select the correct USART peripheral in order to know which binary to flash onto the target board.
+This will output multiple binaries with the name `target_nnn_usartx.bin`. The `nnn` part of the filename refers to the [SRAM entry point offset](https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043), and the `x` part of the filename refers to the target boards USART peripheral used to dump the flash memory contents. The dump script will automatically detect the correct SRAM entry point offset and prompt you to select a USART peripheral in order to know which binary to flash onto the target board.
 
 Allowing to chose the USART peripheral provides the big advantage of being able to use the most convenient/accessable USART pins on the target board.
 
