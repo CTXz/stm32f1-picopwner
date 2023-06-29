@@ -165,7 +165,7 @@ print its content to the terminal.**
 > the target firmware binaries using the `-t` flag. By default, the script will attempt to look for the binaries in the `target/` directory of the cloned
 > repository.
 
-1. From this point on, simply follow the instructions printed by the script.
+3. From this point on, simply follow the instructions printed by the script.
 
 If the dump script worked, you should now have a complete dump of the target board's flash memory in the `dump.bin` file (or whatever you named it).
 Please note that it is normal for the dump to contain a lot of `0xFF` bytes at the end due to unused flash typically being erased to `0xFF`.

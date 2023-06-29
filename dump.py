@@ -96,17 +96,25 @@ def print_metadata():
 # Prints the attack instructions
 def print_instructions():
     print("Instructions:")
+    print("")
     print("1. Flash the attack firmware to the Pi Pico")
+    print("")
     print(
         "2. Connect the Pi Pico to the STM32F1 target as follows (left Pico, right STM):"
     )
     print("    GND -> GND      ")
-    print("     0  -> USART1_RX")
-    print("     1  -> USART1_TX")
+    print("     0  -> USARTx_RX")
+    print("     1  -> USARTx_TX")
     print("     2  -> VDD      ")
     print("     4  -> NRST     ")
     print("     5  -> BOOT0    ")
-    print("3. Follow the instructions provided by this script")
+    print("")
+    print("Where:")
+    print("     USART1_RX = PA10, USART1_TX = PA9")
+    print("     USART2_RX = PA3,  USART2_TX = PA2")
+    print("     USART3_RX = PB11, USART3_TX = PB10")
+    print("")
+    print("3. Follow further instructions provided by this script")
     print("For more detailed steps, see the README.md file.")
 
 
@@ -445,9 +453,9 @@ if sram_entry_offset_supported(sram_entry_point) == False:
 # Select USART if not provided alreay
 if args.usart is None:
     print("Please select the USART used by the STM32F1 target to dump firmware")
-    print("1: USART1")
-    print("2: USART2")
-    print("3: USART3")
+    print("1: USART1 - RX: PA10 TX: PA9)")
+    print("2: USART2 - RX: PA3  TX: PA2)")
+    print("3: USART3 - RX: PB11 TX: PB10)")
     print("Enter 1, 2 or 3: ", end="")
     while True:
         choice = input()
