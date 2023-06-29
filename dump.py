@@ -434,7 +434,11 @@ print(
     + ")"
 )
 if sram_entry_offset_supported(sram_entry_point) == False:
-    print("SRAM entry point offset is not supported, expected: 0x108, 0x1CC or 0x1E")
+    print(
+        "SRAM entry point offset "
+        + str(hex(sram_entry_point))
+        + " is not supported, expected: 0x108, 0x1CC or 0x1E"
+    )
     print("If you believe this is a valid entry point, please submit an issue")
     exit(1)
 
