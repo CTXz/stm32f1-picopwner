@@ -155,7 +155,7 @@ int main()
 	// Due to the FPB, the target will now jump to
 	// stage 2 of the exploit and dump the contents
 	// of the flash over UART
-	gpio_set_dir(RESET_PIN, GPIO_IN);	
+	gpio_set_dir(RESET_PIN, GPIO_IN);
 	gpio_pull_up(RESET_PIN);
 
 	// Wait for dump start magic to ensure
