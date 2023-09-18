@@ -82,7 +82,7 @@ int main()
 	gpio_init(RESET_PIN);
 	gpio_init(BOOT0_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
-	gpio_set_dir(BOOT0_PIN, GPIO_OUT);	
+	gpio_set_dir(BOOT0_PIN, GPIO_OUT);
 	gpio_set_dir(RESET_PIN, GPIO_IN);
 	gpio_pull_up(RESET_PIN);
 
