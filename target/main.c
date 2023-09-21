@@ -161,7 +161,23 @@ int main(void)
 	}
 
 	uint32_t const * addr = (uint32_t*) 0x08000000;
-	while (((uintptr_t) addr) < (0x08000000 + 64u * 1024u)) {
+	uint32_t flash_size = *(uint32_t*)0xE0042000 & 0xFFF;
+
+	// From RM0008, page 54:
+	// https://www.st.com/resource/en/reference_manual/rm0008-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+	
+	if(flash_size == 0x412)					// Low density device, 32KB
+		flash_size = 32 * 1024U;
+	else if(flash_size == 0x410)				// Medium density device, 128KB
+		flash_size = 128U * 1024U;
+	else if(flash_size == 0x414)				// High density device, 512KB
+		flash_size = 512 * 1024U;
+	else if(flash_size == 0x430)				// XL device, 1MB
+		flash_size = 1024U * 1024U;
+	else if(flash_size == 0x418)				// Connectivity device, 256KB
+		flash_size = 256U * 1024U;
+	
+	while (((uintptr_t) addr) < (0x08000000 + flash_size)) {
 		writeWordBe(*addr);
 		++addr;
 	}
