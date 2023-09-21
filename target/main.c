@@ -264,7 +264,7 @@ void readCmd( uint8_t const * const cmd )
 		{
 			uint32_t const * addr = (uint32_t*) 0x08000000;
 			uint32_t br = 8u;
-			while (((uintptr_t) addr) < (0x08000000 + 64u * 1024u)) {
+			while (((uintptr_t) addr) < (0x08000000 + 512u * 1024u)) {
 				if (br == 8u) {
 					writeStr("\r\n[");
 					writeWordBe((uint32_t) addr);
