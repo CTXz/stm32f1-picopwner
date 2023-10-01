@@ -33,6 +33,7 @@
 import argparse
 import time
 import subprocess
+import re
 from pathlib import Path
 from serial import Serial, SerialException
 
@@ -41,7 +42,7 @@ SCRIPT_VERSION = "1.2"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
-MIN_OPENOCD_VERSION = "0.10.0"
+MIN_OPENOCD_VERSION = "0.11.0"
 
 # See See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
 SUPPORTED_SRAM_ENTRY_OFFSETS = [0x108, 0x1CC, 0x1E0]
@@ -165,10 +166,13 @@ def get_openocd_version():
 
     for line in result.stderr.splitlines():
         if "Open On-Chip Debugger " in line:
-            ver = line.split(" ")[3].split(".")
+            ver = re.search(r"\d+\.\d+\.\d+", line)
 
-    if ver == None or len(ver) != 3:
-        raise Exception("Could not determine openocd version")
+            if ver == None:
+                raise Exception("Could not determine openocd version")
+
+            ver = ver.group(0).split(".")
+            break
 
     return ver
 
@@ -225,7 +229,6 @@ def debug_probe_connected():
 def wait_dbg_probe_connect():
     while not debug_probe_connected():
         time.sleep(1)  # Wait for 1 second before retrying
-        
     # Wait 2 seconds afterwards to ensure stable connections
     # Otherwise, it might make a momentary connection while messing with the wires, but fail later!
     time.sleep(2)
@@ -354,10 +357,9 @@ if args.instructions:
 
 # Check if openocd version is >= MIN_OPENOCD_VERSION
 if not openocd_version_geq(MIN_OPENOCD_VERSION):
-    print(
-        "OpenOCD version is too old, please update to at least version "
-        + MIN_OPENOCD_VERSION
-    )
+    print("Your OpenOCD version is too old:")
+    print("Expected: >= " + MIN_OPENOCD_VERSION)
+    print("Found: " + ".".join(get_openocd_version()))
     exit(1)
 
 targetfw_path = Path(args.targetfw)
