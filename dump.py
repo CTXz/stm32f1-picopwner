@@ -225,6 +225,10 @@ def debug_probe_connected():
 def wait_dbg_probe_connect():
     while not debug_probe_connected():
         time.sleep(1)  # Wait for 1 second before retrying
+        
+    # Wait 2 seconds afterwards to ensure stable connections
+    # Otherwise, it might make a momentary connection while messing with the wires, but fail later!
+    time.sleep(2)
 
 
 # Waits until the debug probe is disconnected
