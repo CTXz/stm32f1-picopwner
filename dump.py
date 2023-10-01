@@ -459,9 +459,9 @@ if sram_entry_offset_supported(sram_entry_point) == False:
 # Select USART if not provided alreay
 if args.usart is None:
     print("Please select the USART used by the STM32F1 target to dump firmware")
-    print("1: USART1 - RX: PA10 TX: PA9)")
-    print("2: USART2 - RX: PA3  TX: PA2)")
-    print("3: USART3 - RX: PB11 TX: PB10)")
+    print("1: USART1 - RX: PA10 TX: PA9")
+    print("2: USART2 - RX: PA3  TX: PA2")
+    print("3: USART3 - RX: PB11 TX: PB10")
     print("Enter 1, 2 or 3: ", end="")
     while True:
         choice = input()
