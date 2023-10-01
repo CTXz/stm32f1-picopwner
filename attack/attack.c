@@ -84,6 +84,7 @@ int main()
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 	gpio_set_dir(BOOT0_PIN, GPIO_OUT);
 	gpio_set_dir(RESET_PIN, GPIO_IN);
+	gpio_pull_up(RESET_PIN);
 
 	// Init PWM for indicator LED
 	gpio_set_function(LED_PIN, GPIO_FUNC_PWM);
@@ -155,6 +156,7 @@ int main()
 	// stage 2 of the exploit and dump the contents
 	// of the flash over UART
 	gpio_set_dir(RESET_PIN, GPIO_IN);
+	gpio_pull_up(RESET_PIN);
 
 	// Wait for dump start magic to ensure
 	// that we don't forward any garbage data
