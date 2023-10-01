@@ -1,5 +1,5 @@
 /*
- * Author: JohannesObermaier, Patrick Pedersen
+ * Authors: JohannesObermaier, Patrick Pedersen
  *
  * Stage 2 of the exploit target firmware
  * This part dumps the contents of the flash memory
@@ -7,7 +7,7 @@
  * by the attack board and lastly sent over USB serial
  * to create a dump file.
  *
- * Targer Firmware Version: 1.1
+ * Targer Firmware Version: 1.2
  *
  * This code is a trimmed down version of the original
  * root shell code published here:
@@ -157,9 +157,9 @@ int main(void)
 	// Flash size register, RM0008, page 1076:
 	// https://www.st.com/resource/en/reference_manual/rm0008-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
 
-	uint32_t flash_size = *(uint32_t*)0x1FFFF7E0 & 0xFFFF;
-	if(flash_size==64)        // Force reading of the entire 128KB flash in 64KB devices, often used.
-	  flash_size=128;
+	uint32_t flash_size = *(uint32_t*) 0x1FFFF7E0 & 0xFFFF;
+	if(flash_size == 64)        // Force reading of the entire 128KB flash in 64KB devices, often used.
+		flash_size = 128;
 
 	/* Print start magic to inform the attack board that
 	   we are going to dump */

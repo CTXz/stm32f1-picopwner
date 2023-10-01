@@ -38,7 +38,7 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.2"
+SCRIPT_VERSION = "1.3"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
