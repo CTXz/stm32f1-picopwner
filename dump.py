@@ -287,7 +287,7 @@ def upload_target_fw(fw_path: str):
     result = openocd_run(
         "stlink.cfg",
         "stm32f1x.cfg",
-        ["init", "load_image " + fw_path + " " + str(hex(SRAM_START)), "exit"],
+        ["init", 'load_image "' + fw_path + '" ' + str(hex(SRAM_START)), "exit"],
     )
 
     for line in result.stderr.splitlines():
