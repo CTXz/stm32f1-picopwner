@@ -46,7 +46,7 @@ its original implementation [here](https://github.com/JohannesObermaier/f103-ana
 
 Please ensure the following dependencies are installed on your system:
 
-- [OpenOCD](http://openocd.org/) (v0.10.0 or higher)
+- [OpenOCD](http://openocd.org/) (v0.11.0 or higher)
 - [Python3](https://www.python.org/)
 - [PySerial](https://pythonhosted.org/pyserial/)
 
