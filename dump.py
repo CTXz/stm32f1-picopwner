@@ -129,9 +129,9 @@ def print_welcome():
     print("")
 
 
-# Returns true if the serial port is used
-# Returns false if the serial port is not used
-def serial_used(port: str):
+# Returns true if the serial port exists
+# Returns false if the serial port does not exist
+def serial_exists(port: str):
     try:
         ser = Serial(port, BAUDRATE, timeout=SERIAL_TIMEOUT_S)
         ser.close()
@@ -145,7 +145,7 @@ def serial_used(port: str):
 # Waits until the serial port is no longer used
 def wait_serial_disconnect(port: str):
     while True:
-        if serial_used(port) == False:
+        if serial_exists(port) == False:
             return
         time.sleep(1)
 
@@ -401,7 +401,7 @@ if debug_probe_connected():
 
 # Check if pico is already connected to the specified serial port
 # If so, request pico to be reset to ensure a clean state
-if serial_used(args.port):
+if serial_exists(args.port):
     print("Device already connected to " + args.port)
     print(
         "Please press the reset button on the Pi Pico or reconnect it to ensure a clean state"
