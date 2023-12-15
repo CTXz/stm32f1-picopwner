@@ -136,7 +136,9 @@ def serial_used(port: str):
         ser = Serial(port, BAUDRATE, timeout=SERIAL_TIMEOUT_S)
         ser.close()
         return True
-    except SerialException:
+    except SerialException as e:
+        if "could not open port" not in str(e):
+            raise e
         return False
 
 
@@ -154,7 +156,9 @@ def wait_serial_connect(port: str):
         try:
             ser = Serial(port, BAUDRATE, timeout=SERIAL_TIMEOUT_S)
             return ser
-        except SerialException:
+        except SerialException as e:
+            if "could not open port" not in str(e):
+                raise e
             time.sleep(1)
             continue
 
