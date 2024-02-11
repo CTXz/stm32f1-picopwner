@@ -38,7 +38,7 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.3"
+SCRIPT_VERSION = "1.3.1"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
@@ -415,7 +415,7 @@ else:
     exit(1)
 
 # Wait for debug probe to be connected to the STM32F1 target
-print("Waiting for debug probe to be connected...")
+print("Waiting for debug probe (e.g. ST-Link) to be connected...")
 wait_dbg_probe_connect()
 print("Debug probe connected to STM32F1 target")
 
