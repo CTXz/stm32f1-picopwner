@@ -61,22 +61,16 @@ create_build_target_dir:
 	$(CC) -o $(BUILD_TARGET_OUT)/$@ -c $< $(CFLAGS) $(DEFINES)
 
 %.elf: $(OBJECTS) create_build_dir create_build_target_dir
-	$(CC) -o $(BUILD_TARGET_OUT)/$@ $(OBJECTS_OUTPUT) $(LDFLAGS) -Tram_$*.ld
+	$(CC) -o $(BUILD_TARGET_OUT)/$@ $(OBJECTS_OUTPUT) $(LDFLAGS) -Tram.ld
 
 usart1: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_108_usart1.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1cc.elf target_1cc_usart1.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1e0.elf target_1e0_usart1.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart1.bin
 
 usart2: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_108_usart2.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1cc.elf target_1cc_usart2.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1e0.elf target_1e0_usart2.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart2.bin
 
 usart3: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_108_usart3.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1cc.elf target_1cc_usart3.bin
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/1e0.elf target_1e0_usart3.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart3.bin
 
 all:
 	$(MAKE) usart1

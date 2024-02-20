@@ -7,7 +7,7 @@
  * by the attack board and lastly sent over USB serial
  * to create a dump file.
  *
- * Targer Firmware Version: 1.2
+ * Targer Firmware Version: 1.3
  *
  * This code is a trimmed down version of the original
  * root shell code published here:

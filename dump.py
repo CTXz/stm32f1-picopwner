@@ -38,14 +38,11 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.3.1"
+SCRIPT_VERSION = "1.4"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
 MIN_OPENOCD_VERSION = "0.11.0"
-
-# See See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
-SUPPORTED_SRAM_ENTRY_OFFSETS = [0x108, 0x1CC, 0x1E0]
 
 script_path = Path(__file__).resolve()
 default_targetfw_dir = str(script_path.parent / "target")
@@ -285,8 +282,9 @@ def get_sram_entry_point():
 
 
 # Checks if the provided entry point address is supported
+# See See https://github.com/CTXz/stm32f1-picopwner/issues/1#issuecomment-1603281043
 def sram_entry_offset_supported(entry_addr: int):
-    return entry_addr in SUPPORTED_SRAM_ENTRY_OFFSETS
+    return (entry_addr >= 0x100) and (entry_addr < 0x300)
 
 
 # Uploads the target firmware to the SRAM of the target
@@ -304,10 +302,9 @@ def upload_target_fw(fw_path: str):
             )
 
 
-# Gets the correct target firmware binary based on the provided entry point address
-# and usart
-def get_target_fw_bin(bin_path: str, entry_addr: int, usart: int):
-    fname = "target_" + str(hex(entry_addr))[2:] + "_usart" + str(usart) + ".bin"
+# Gets the correct target firmware binary based on the provided USART
+def get_target_fw_bin(bin_path: str, usart: int):
+    fname = "target_usart" + str(usart) + ".bin"
     path = bin_path + "/" + fname
     if Path(path).is_file():
         return path
@@ -451,7 +448,7 @@ if sram_entry_offset_supported(sram_entry_point) == False:
     print(
         "SRAM entry point offset "
         + str(hex(sram_entry_point))
-        + " is not supported, expected: 0x108, 0x1CC or 0x1E"
+        + " is not supported, expected: 0x100-0x2FF"
     )
     print("If you believe this is a valid entry point, please submit an issue")
     exit(1)
@@ -482,7 +479,7 @@ else:
 # Upload the target firmware to the SRAM
 print("Press enter to load the target exploit firmware to the SRAM")
 input()
-upload_target_fw(get_target_fw_bin(args.targetfw, sram_entry_point, usart))
+upload_target_fw(get_target_fw_bin(args.targetfw, usart))
 print("Target firmware loaded to the SRAM")
 
 # Ensure user disconnects the debug probe from the target

@@ -16,7 +16,7 @@
 
 .section .isr_vector
 isrVectors:
-	.word 0x20005000
+	.word 0x20001000
 	.word _start+1
 	.word vecNMI+1
 	.word vecHardfault+1
@@ -24,11 +24,12 @@ isrVectors:
 	.word 0
 	.word 0
 	.word 0
-/* These is the stage 2 entry point */
 	.word stage2+1
 
 .section .entryVec
+.rept 0x100
 	b _start
+.endr
 
 .section .text
 .thumb
