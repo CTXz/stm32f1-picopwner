@@ -27,137 +27,202 @@
 
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
-typedef uint32_t *reg_t;
+//// Special Registers
+#define AIRCR (*(uint32_t *)0xE000ED0Cu)
+#define FLASH_SIZE_REG (*(uint32_t *)0x1FFFF7E0u) // Flash size register, RM0008, page 1076:
 
-const volatile reg_t RCC_APB1ENR = (reg_t)0x4002101Cu;
-const volatile reg_t RCC_APB2ENR = (reg_t)0x40021018u;
-const volatile reg_t GPIOA_CRH = (reg_t)0x40010804u;
-const volatile reg_t GPIOA_CRL = (reg_t)0x40010800u;
-const volatile reg_t GPIOB_CRH = (reg_t)0x40010C04u;
-const volatile reg_t IO_B_MODE_L = (reg_t)0x40010C00u;
-const volatile reg_t USART1_CTRL = (reg_t)0x40013800u;
-const volatile reg_t USART2_CTRL = (reg_t)0x40004400u;
-const volatile reg_t USART3_CTRL = (reg_t)0x40004800u;
+//// Peripheral registers
 
-volatile reg_t sel_usart_ctrl;
+// RCC
+#define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
+#define RCC_APB2ENR (*(uint32_t *)0x40021018u)
 
-void readChar(uint8_t const chr);
-void writeByte(uint8_t b);
-void writeStr(uint8_t const *const str);
-void writeChar(uint8_t const chr);
-void writeWordLe(uint32_t const word);
-void writeWordBe(uint32_t const word);
-void readCmd(uint8_t const *const cmd);
-uint32_t hexToInt(uint8_t const *const hex);
-void readMem(uint32_t const addr, uint32_t const len);
-void writeMem(uint32_t const addr, uint32_t const data);
+// GPIO
+typedef struct __attribute__((packed))
+{
+	uint32_t CRL;
+	uint32_t CRH;
+	uint32_t IDR;
+	uint32_t ODR;
+	uint32_t BSRR;
+	uint32_t BRR;
+	uint32_t LCKR;
+} GPIO;
 
-uint8_t const strHelp[] = "Help\r\n-----------\r\n"
-			  "ADDR, VAL, LEN: 32-bit Hex encoded:\r\n e.g., 0A1337FF\r\n"
-			  "-----------\r\n"
-			  "R ADDR LEN - Read 32-bit word\r\n"
-			  "W ADDR VAL - Write 32-bit word\r\n"
-			  "D          - Dump all flash memory\r\n"
-			  "S          - Reboot\r\n"
-			  "E          - Exit\r\n"
-			  "H          - Show help \r\n"
-			  "---------------\r\n";
+#define GPIOA ((GPIO *)0x40010800u)
+#define GPIOB ((GPIO *)0x40010C00u)
 
 #define PIN_CONFIG_ALT_PUSH_PULL 0xB
 #define PIN_CONFIG_INPUT_PULL_UP 0x8
 
-// Intializes USART1
-// Returns the USART1 control register
-reg_t init_usart1()
+// USART
+typedef struct __attribute__((packed))
+{
+	uint32_t SR;
+	uint32_t DR;
+	uint32_t BRR;
+	uint32_t CR1;
+	uint32_t CR2;
+	uint32_t CR3;
+	uint32_t GTPR;
+} USART;
+
+#define USART1 ((USART *)0x40013800u)
+#define USART2 ((USART *)0x40004400u)
+#define USART3 ((USART *)0x40004800u)
+
+#define USARTDIV 0x00000341u	  // 9600 baud @ 8Mhz
+#define USART_CR1_MSK 0x0000200Cu // 8-bit, no parity, enable RX/TX
+
+volatile USART *usart;
+
+/* Intializes USART1
+ * Returns the USART1 control register */
+USART *init_usart1()
 {
 	/* Enable Clocks */
-	*RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
-	*RCC_APB2ENR |= (1 << 14); // USART1 clock enable
+	RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
+	RCC_APB2ENR |= (1 << 14); // USART1 clock enable
 
 	/* Configure Pins */
 
 	// Set PA9 (TX) to alternate function push-pull
-	*GPIOA_CRH &= ~(0xF << 4);
-	*GPIOA_CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 4);
+	GPIOA->CRH &= ~(0xF << 4);
+	GPIOA->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 4);
 
 	// Set PA10 (RX) to input pull-up
-	*GPIOA_CRH &= ~(0xF << 8);
-	*GPIOA_CRH |= (PIN_CONFIG_INPUT_PULL_UP << 8);
+	GPIOA->CRH &= ~(0xF << 8);
+	GPIOA->CRH |= (PIN_CONFIG_INPUT_PULL_UP << 8);
 
 	/* Configure and enable USART1 */
-	USART1_CTRL[2] = 0x00000341u;
-	USART1_CTRL[3] = 0x0000200Cu;
+	USART1->BRR = USARTDIV;
+	USART1->CR1 = USART_CR1_MSK;
 
-	return USART1_CTRL;
+	return USART1;
 }
 
-// Intializes USART2
-// Returns the USART2 control register
-reg_t init_usart2()
+/* Intializes USART2
+ * Returns the USART2 control register */
+USART *init_usart2()
 {
-	/* USART2 clock enable */
-	*RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
-	*RCC_APB1ENR |= (1 << 17); // USART2 clock enable
+	/* Enable Clocks */
+	RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
+	RCC_APB1ENR |= (1 << 17); // USART2 clock enable
 
 	/* Configure Pins */
 
 	// Set PA2 (TX) to alternate function push-pull
-	*GPIOA_CRL &= ~(0xF << 8);
-	*GPIOA_CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+	GPIOA->CRL &= ~(0xF << 8);
+	GPIOA->CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
 
 	// Set PA3 (RX) to input pull-up
-	*GPIOA_CRL &= ~(0xF << 12);
-	*GPIOA_CRL |= (PIN_CONFIG_INPUT_PULL_UP << 12);
+	GPIOA->CRL &= ~(0xF << 12);
+	GPIOA->CRL |= (PIN_CONFIG_INPUT_PULL_UP << 12);
 
 	/* Configure and enable USART2 */
-	USART2_CTRL[2] = 0x00000341u;
-	USART2_CTRL[3] = 0x0000200Cu;
+	USART2->BRR = USARTDIV;
+	USART2->CR1 = USART_CR1_MSK;
 
-	return USART2_CTRL;
+	return USART2;
 }
 
-// Intializes USART3
-// Returns the USART3 control register
-reg_t init_usart3()
+/* Intializes USART3
+ * Returns the USART3 control register */
+USART *init_usart3()
 {
-	/* USART3 clock enable */
-	*RCC_APB1ENR |= (1 << 18);
-
-	/* IOB Enable */
-	*RCC_APB2ENR |= (1 << 3);
+	/* Enable Clocks */
+	RCC_APB2ENR |= (1 << 3);  // Input-Output Port B clock enable
+	RCC_APB1ENR |= (1 << 18); // USART3 clock enable
 
 	// Set PB10 (TX) to alternate function push-pull
-	*GPIOB_CRH &= ~(0xF << 8);
-	*GPIOB_CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+	GPIOB->CRH &= ~(0xF << 8);
+	GPIOB->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
 
 	// Set PB11 (RX) to input pull-up
-	*GPIOB_CRH &= ~(0xF << 12);
-	*GPIOB_CRH |= (PIN_CONFIG_INPUT_PULL_UP << 12);
+	GPIOB->CRH &= ~(0xF << 12);
+	GPIOB->CRH |= (PIN_CONFIG_INPUT_PULL_UP << 12);
 
 	/* Configure and enable USART3 */
-	USART3_CTRL[2] = 0x00000341;
-	USART3_CTRL[3] = 0x0000200C;
+	USART3->BRR = USARTDIV;
+	USART3->CR1 = USART_CR1_MSK;
 
-	return USART3_CTRL;
+	return USART3;
 }
 
+//// Printing
+
+const uint8_t txtMap[] = "0123456789ABCDEF";
+
+// Writes character to USART
+void writeChar(uint8_t const chr)
+{
+	while (!(usart->SR & 0x80u))
+	{
+		/* wait */
+	}
+
+	usart->DR = chr;
+}
+
+// Writes byte to USART
+void writeByte(uint8_t b)
+{
+	writeChar(txtMap[b >> 4]);
+	writeChar(txtMap[b & 0x0F]);
+}
+
+// Writes word to USART
+void writeWord(uint32_t const word)
+{
+	writeChar((word & 0x000000FF));
+	writeChar((word & 0x0000FF00) >> 8);
+	writeChar((word & 0x00FF0000) >> 16);
+	writeChar((word & 0xFF000000) >> 24);
+}
+
+// Writes string to USART
+void writeStr(uint8_t const *const str)
+{
+	uint32_t ind = 0u;
+
+	while (str[ind])
+	{
+		writeChar(str[ind]);
+		++ind;
+	}
+}
+
+//// Exception handling
+
+/* Handles memory management faults
+ * Typically indicates that the exploit failed */
+void alertCrash(uint32_t crashId)
+{
+	writeStr("!!! EXCEPTION !!!\r\nID: ");
+	writeByte(crashId);
+	writeStr("\r\nRestart required!\r\n\r\n");
+	AIRCR = 0x05FA0004u;
+	while (1)
+		;
+}
+
+//// Main
+
+/* Stage 2 entry point */
 int main(void)
 {
 	/* Init USART */
 #if defined(USE_USART1)
-	sel_usart_ctrl = init_usart1();
+	usart = init_usart1();
 #elif defined(USE_USART2)
-	sel_usart_ctrl = init_usart2();
+	usart = init_usart2();
 #elif defined(USE_USART3)
-	sel_usart_ctrl = init_usart3();
+	usart = init_usart3();
 #else
 #error "No USART selected"
 #endif
 
-	// Flash size register, RM0008, page 1076:
-	// https://www.st.com/resource/en/reference_manual/rm0008-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
-
-	uint32_t flash_size = *(uint32_t *)0x1FFFF7E0 & 0xFFFF;
+	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
 	if (flash_size == 64) // Force reading of the entire 128KB flash in 64KB devices, often used.
 		flash_size = 128;
 
@@ -171,255 +236,7 @@ int main(void)
 	uint32_t const *addr = (uint32_t *)0x08000000;
 	while (((uintptr_t)addr) < (0x08000000U + (flash_size * 1024U)))
 	{
-		writeWordBe(*addr);
+		writeWord(*addr);
 		++addr;
 	}
-}
-
-/* hex must have length 8 */
-uint32_t hexToInt(uint8_t const *const hex)
-{
-	uint32_t ind = 0u;
-	uint32_t res = 0u;
-
-	for (ind = 0; ind < 8; ++ind)
-	{
-		uint8_t chr = hex[ind];
-		uint32_t val = 0u;
-
-		res <<= 4u;
-
-		if ((chr >= '0') && (chr <= '9'))
-		{
-			val = chr - '0';
-		}
-		else if ((chr >= 'a') && (chr <= 'f'))
-		{
-			val = chr - 'a' + 0x0a;
-		}
-		else if ((chr >= 'A') && (chr <= 'F'))
-		{
-			val = chr - 'A' + 0x0a;
-		}
-		else
-		{
-			val = 0u;
-		}
-		res |= val;
-	}
-
-	return res;
-}
-
-void readChar(uint8_t const chr)
-{
-#define CMDBUF_LEN (64u)
-	static uint8_t cmdbuf[CMDBUF_LEN] = {0u};
-	static uint32_t cmdInd = 0u;
-
-	switch (chr)
-	{
-	case '\n':
-	case '\r':
-		cmdbuf[cmdInd] = 0u;
-		if (cmdInd != 0)
-		{
-			writeStr("\r\n");
-		}
-		readCmd(cmdbuf);
-		cmdInd = 0u;
-		writeStr("\r\n> ");
-		{
-			uint32_t ind = 0u;
-			for (ind = 0; ind < CMDBUF_LEN; ++ind)
-			{
-				cmdbuf[ind] = 0x00u;
-			}
-		}
-		break;
-
-	case 8:
-	case 255:
-	case 127: /* TODO backspace */
-		if (cmdInd > 0u)
-			--cmdInd;
-		writeChar(chr);
-		break;
-
-	default:
-		if (cmdInd < (CMDBUF_LEN - 1))
-		{
-			cmdbuf[cmdInd] = chr;
-			++cmdInd;
-			writeChar(chr);
-		}
-		break;
-	}
-}
-
-void readCmd(uint8_t const *const cmd)
-{
-	switch (cmd[0])
-	{
-	case 0:
-		return;
-		break;
-
-	/* read 32-bit command */
-	case 'r':
-	case 'R':
-		/* r 08000000 00000100 */
-		readMem(hexToInt(&cmd[2]), hexToInt(&cmd[11]));
-		break;
-
-	/* write 32-bit command */
-	case 'w':
-	case 'W':
-		/* w 20000000 12345678 */
-		writeMem(hexToInt(&cmd[2]), hexToInt(&cmd[11]));
-		break;
-
-	/* Dump all flash */
-	case 'd':
-	case 'D':
-		writeStr("\r\n\r\n");
-		{
-			uint32_t const *addr = (uint32_t *)0x08000000;
-			uint32_t br = 8u;
-			while (((uintptr_t)addr) < (0x08000000 + 64u * 1024u))
-			{
-				if (br == 8u)
-				{
-					writeStr("\r\n[");
-					writeWordBe((uint32_t)addr);
-					writeStr("]: ");
-					br = 0u;
-				}
-
-				writeWordBe(*addr);
-				writeChar(' ');
-				++addr;
-				++br;
-			}
-		}
-		writeStr("\r\n\r\n");
-		break;
-
-	/* Help command */
-	case 'h':
-	case 'H':
-		writeStr(strHelp);
-		break;
-
-	/* Reboot */
-	case 's':
-	case 'S':
-		writeStr("Rebooting...\r\n\r\n");
-		*((uint32_t *)0xE000ED0C) = 0x05FA0004u;
-		break;
-
-	/* exit */
-	case 'e':
-	case 'E':
-		writeStr("Bye.\r\n");
-		while (1)
-		{
-			__asm__ volatile("wfi");
-		}
-		break;
-
-	default:
-		writeStr("Unknown command: ");
-		writeStr(cmd);
-		writeStr("\r\n");
-		break;
-	}
-}
-
-const uint8_t txtMap[] = "0123456789ABCDEF";
-
-void writeByte(uint8_t b)
-{
-	writeChar(txtMap[b >> 4]);
-	writeChar(txtMap[b & 0x0F]);
-}
-
-void writeStr(uint8_t const *const str)
-{
-	uint32_t ind = 0u;
-
-	while (str[ind])
-	{
-		writeChar(str[ind]);
-		++ind;
-	}
-}
-
-void writeChar(uint8_t const chr)
-{
-	while (!(sel_usart_ctrl[0] & 0x80u))
-	{
-		/* wait */
-	}
-
-	sel_usart_ctrl[1] = chr;
-}
-
-void writeWordLe(uint32_t const word)
-{
-	writeByte((word & 0x000000FF));
-	writeByte((word & 0x0000FF00) >> 8);
-	writeByte((word & 0x00FF0000) >> 16);
-	writeByte((word & 0xFF000000) >> 24);
-}
-
-void writeWordBe(uint32_t const word)
-{
-	writeChar((word & 0x000000FF));
-	writeChar((word & 0x0000FF00) >> 8);
-	writeChar((word & 0x00FF0000) >> 16);
-	writeChar((word & 0xFF000000) >> 24);
-}
-
-void alertCrash(uint32_t crashId)
-{
-	writeStr("!!! EXCEPTION !!!\r\nID: ");
-	writeByte(crashId);
-	writeStr("\r\nRestart required!\r\n\r\n");
-	*((uint32_t *)0xE000ED0C) = 0x05FA0004u;
-	while (1)
-		;
-}
-
-void readMem(uint32_t const addr, uint32_t const len)
-{
-	uint32_t it = 0u;
-	uint32_t addrx = 0u;
-	uint32_t lenx = 0u;
-
-	lenx = len;
-	if (lenx == 0u)
-	{
-		lenx = 4u;
-	}
-
-	for (it = 0u; it < (lenx / 4u); ++it)
-	{
-		addrx = addr + it * 4u;
-		writeStr("Read [");
-		writeWordBe(addrx);
-		writeStr("]: ");
-		writeWordBe(*((uint32_t *)addrx));
-		writeStr("\r\n");
-	}
-}
-
-void writeMem(uint32_t const addr, uint32_t const data)
-{
-	writeStr("Write [");
-	writeWordBe(addr);
-	writeStr("]: ");
-	writeWordBe(data);
-	*((uint32_t *)addr) = data;
-	writeStr("\r\n");
 }
