@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Patrick Pedersen
+# Copyright (C) 2024 Patrick Pedersen
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ ASMFLAGS=-mthumb -mcpu=cortex-m3 -g3
 LDFLAGS=-nostartfiles -mcpu=cortex-m3 -mthumb -g3
 LDSCRIPT=
 DEFINES=
-OBJECTS=main.o test.o
+OBJECTS=main.o entry.o
 OBJECTS_OUTPUT=$(addprefix $(BUILD_TARGET_OUT)/, $(OBJECTS))
 ELFS=108.elf 1cc.elf 1e0.elf
 ELFS_OUTPUT=$(addprefix $(BUILD_TARGET_OUT)/, $(ELFS))

@@ -1,15 +1,15 @@
 /*
  * Authors: JohannesObermaier, Patrick Pedersen
  *
- * Stage 2 of the exploit target firmware
- * This part dumps the contents of the flash memory
+ * Target Firmware Version: 1.3
+ *
+ * Dumps the entire flash memory of the target board
  * and sends it over UART, where it is then received
- * by the attack board and lastly sent over USB serial
- * to create a dump file.
+ * by the attack board.
  *
- * Targer Firmware Version: 1.3
+ * This code is executed during stage 2 of the attack.
  *
- * This code is a trimmed down version of the original
+ * The code provided here is a trimmed down version of the original
  * root shell code published here:
  * https://github.com/JohannesObermaier/f103-analysis/tree/master/h3
  * It removes the root shell functionality and goes straight
@@ -20,7 +20,6 @@
  * 	-D USE_USART1
  * 	-D USE_USART2
  * 	-D USE_USART3
- *
  */
 
 #include <stdint.h>
@@ -189,14 +188,14 @@ void alertCrash(uint32_t crashId)
 	writeStr("!!! EXCEPTION !!!\r\nID: ");
 	writeByte(crashId);
 	writeStr("\r\nRestart required!\r\n\r\n");
-	AIRCR = 0x05FA0004u;
+	AIRCR = 0x05FA0004u; // Reset
 	while (1)
 		;
 }
 
 //// Main
 
-/* Stage 2 entry point */
+// Called by stage 2 in entry.S
 int main(void)
 {
 	/* Init USART */
