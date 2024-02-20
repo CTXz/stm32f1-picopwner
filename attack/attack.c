@@ -115,7 +115,8 @@ int main()
 	// -- Ensure that the target exploit firmware has been loaded into the target's SRAM before preceeding --
 
 	// Wait for any serial input to start the attack
-	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT) {
+	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT)
+	{
 		tight_loop_contents();
 	}
 
@@ -124,7 +125,8 @@ int main()
 	gpio_put(POWER_PIN, 0);
 
 	// Wait for reset to go low
-	while (gpio_get(RESET_PIN)) {
+	while (gpio_get(RESET_PIN))
+	{
 		tight_loop_contents();
 	}
 
@@ -160,26 +162,35 @@ int main()
 	// that we don't forward any garbage data
 	// caused by the reset
 	uint magic_index = 0;
-	while (true) {
+	while (true)
+	{
 		char c = uart_getc(UART_ID);
-		if (c == DUMP_START_MAGIC[magic_index]) {
-			if (++magic_index == sizeof(DUMP_START_MAGIC)) {
+		if (c == DUMP_START_MAGIC[magic_index])
+		{
+			if (++magic_index == sizeof(DUMP_START_MAGIC))
+			{
 				break;
 			}
-		} else {
+		}
+		else
+		{
 			magic_index = 0;
 		}
 	}
 
 	// Forward dumped data from UART to USB serial
 	uint stalls = 0;
-	while (true) {
-		if (uart_is_readable(UART_ID)) {
+	while (true)
+	{
+		if (uart_is_readable(UART_ID))
+		{
 			char c = uart_getc(UART_ID);
 			putchar(c);
 			pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
 			stalls = 0;
-		} else {
+		}
+		else
+		{
 			// If no data is received for a while, turn off the LED
 			if (++stalls == UART_STALLS_FOR_LED_OFF)
 				pwm_set_gpio_level(LED_PIN, 0);
