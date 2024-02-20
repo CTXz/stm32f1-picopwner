@@ -72,7 +72,7 @@ typedef struct __attribute__((packed))
 #define USART3 ((USART *)0x40004800u)
 
 #define USARTDIV 0x00000341u	  // 9600 baud @ 8Mhz
-#define USART_CR1_MSK 0x0000200Cu // 8-bit, no parity, enable RX/TX
+#define USART_CR1_MSK 0x00002008u // 8-bit, no parity, enable TX
 
 volatile USART *usart;
 
@@ -89,10 +89,6 @@ USART *init_usart1()
 	// Set PA9 (TX) to alternate function push-pull
 	GPIOA->CRH &= ~(0xF << 4);
 	GPIOA->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 4);
-
-	// Set PA10 (RX) to input pull-up
-	GPIOA->CRH &= ~(0xF << 8);
-	GPIOA->CRH |= (PIN_CONFIG_INPUT_PULL_UP << 8);
 
 	/* Configure and enable USART1 */
 	USART1->BRR = USARTDIV;
@@ -115,10 +111,6 @@ USART *init_usart2()
 	GPIOA->CRL &= ~(0xF << 8);
 	GPIOA->CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
 
-	// Set PA3 (RX) to input pull-up
-	GPIOA->CRL &= ~(0xF << 12);
-	GPIOA->CRL |= (PIN_CONFIG_INPUT_PULL_UP << 12);
-
 	/* Configure and enable USART2 */
 	USART2->BRR = USARTDIV;
 	USART2->CR1 = USART_CR1_MSK;
@@ -137,10 +129,6 @@ USART *init_usart3()
 	// Set PB10 (TX) to alternate function push-pull
 	GPIOB->CRH &= ~(0xF << 8);
 	GPIOB->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
-
-	// Set PB11 (RX) to input pull-up
-	GPIOB->CRH &= ~(0xF << 12);
-	GPIOB->CRH |= (PIN_CONFIG_INPUT_PULL_UP << 12);
 
 	/* Configure and enable USART3 */
 	USART3->BRR = USARTDIV;

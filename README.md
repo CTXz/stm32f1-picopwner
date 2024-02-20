@@ -120,21 +120,21 @@ Next, connect your Pi Pico to your target board as shown in the table below:
 | Pi Pico          | STM32F1   |
 | ---------------- | --------- |
 | GND              | GND       |
-| GPIO0 / UART0_TX | USARTx_RX |
+| ~~GPIO0 / UART0_TX~~ **NO LONGER USED**  | ~~USARTx_RX~~ **NO LONGER USED** |
 | GPIO1 / UART0_RX | USARTx_TX |
 | GPIO2            | VDD       |
 | GPIO4            | NRST      |
 | GPIO5            | BOOT0     |
 
-Where `USARTx_RX` and `USARTx_TX` are the `RX` and `TX` pins of the USART peripheral that will be used to dump the flash memory contents.
+Where `USARTx_TX` refers to the `TX` pin of a selected USART peripheral on the STM device, which will be utilized for transmitting the flash memory contents.
 
-The USART pins for STM32F1-series chips are assigned as follows:
+The USART TX pins for STM32F1-series chips are assigned as follows:
 
-| USART Peripheral | RX   | TX   |
-| ---------------- | ---- | ---- |
-| USART1           | PA10 | PA9  |
-| USART2           | PA3  | PA2  |
-| USART3           | PB11 | PB10 |
+| USART Peripheral | TX   |
+| ---------------- | ---- |
+| USART1           | PA9  |
+| USART2           | PA2  |
+| USART3           | PB10 |
 
 Below is a picture that shows the hardware setup using a Blue Pill board as the target board with `USART1` used to dump the flash memory:
 
