@@ -208,7 +208,7 @@ def openocd_run(interface: str, traget: str, cmds: list):
 def debug_probe_connected():
     result = openocd_run(
         "stlink.cfg",
-        "stm32f1x.cfg",
+        "stm32f4x.cfg",
         ["init", "reset halt", "targets", "exit"],
     )
 
@@ -246,19 +246,15 @@ def wait_dbg_probe_disconnect():
 def get_rdp_status():
     result = openocd_run(
         "stlink.cfg",
-        "stm32f1x.cfg",
-        ["init", "reset halt", "stm32f1x options_read 0", "exit"],
+        "stm32f4x.cfg",
+        ["init", "reset halt", "stm32f4x options_read 0", "exit"],
     )
 
     for line in result.stderr.splitlines():
-        if "read protection: on" in line:
+        if "Device Security Bit Set" in line:
             return True
-        elif "read protection: off" in line:
-            return False
 
-    raise Exception(
-        "Could not determine read protection status\nopenocd output: " + line
-    )
+    return False
 
 
 # Returns the entry point address of the SRAM based on the reset vector
@@ -266,7 +262,7 @@ def get_rdp_status():
 def get_sram_entry_point():
     result = openocd_run(
         "stlink.cfg",
-        "stm32f1x.cfg",
+        "stm32f4x.cfg",
         ["init", "reset halt", "exit"],
     )
 
@@ -291,7 +287,7 @@ def sram_entry_offset_supported(entry_addr: int):
 def upload_target_fw(fw_path: str):
     result = openocd_run(
         "stlink.cfg",
-        "stm32f1x.cfg",
+        "stm32f4x.cfg",
         ["init", 'load_image "' + fw_path + '" ' + str(hex(SRAM_START)), "exit"],
     )
 
@@ -436,22 +432,22 @@ else:
             print("Please respond with 'y' or 'n'")
 
 # Get the entry point address of the SRAM
-sram_entry_point = get_sram_entry_point()
-print(
-    "Detected SRAM entry point offset: "
-    + str(hex(sram_entry_point))
-    + " ("
-    + str(hex(0x20000000 + sram_entry_point))
-    + ")"
-)
-if sram_entry_offset_supported(sram_entry_point) == False:
-    print(
-        "SRAM entry point offset "
-        + str(hex(sram_entry_point))
-        + " is not supported, expected: 0x100-0x2FF"
-    )
-    print("If you believe this is a valid entry point, please submit an issue")
-    exit(1)
+# sram_entry_point = get_sram_entry_point()
+# print(
+#     "Detected SRAM entry point offset: "
+#     + str(hex(sram_entry_point))
+#     + " ("
+#     + str(hex(0x20000000 + sram_entry_point))
+#     + ")"
+# )
+# if sram_entry_offset_supported(sram_entry_point) == False:
+#     print(
+#         "SRAM entry point offset "
+#         + str(hex(sram_entry_point))
+#         + " is not supported, expected: 0x100-0x2FF"
+#     )
+#     print("If you believe this is a valid entry point, please submit an issue")
+#     exit(1)
 
 # Select USART if not provided alreay
 if args.usart is None:
@@ -479,7 +475,8 @@ else:
 # Upload the target firmware to the SRAM
 print("Press enter to load the target exploit firmware to the SRAM")
 input()
-upload_target_fw(get_target_fw_bin(args.targetfw, usart))
+# upload_target_fw(get_target_fw_bin(args.targetfw, usart))
+upload_target_fw("./f4-testing/blinky.bin")
 print("Target firmware loaded to the SRAM")
 
 # Ensure user disconnects the debug probe from the target

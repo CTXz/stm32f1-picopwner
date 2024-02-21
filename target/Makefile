@@ -27,9 +27,9 @@ BUILD_OUT=build
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-ld
 OBJCOPY=arm-none-eabi-objcopy
-CFLAGS=-mthumb -mcpu=cortex-m3 -Os -g3
-ASMFLAGS=-mthumb -mcpu=cortex-m3 -g3
-LDFLAGS=-nostartfiles -mcpu=cortex-m3 -mthumb -g3
+CFLAGS=-mthumb -mcpu=cortex-m4 -Os -g3
+ASMFLAGS=-mthumb -mcpu=cortex-m4 -g3
+LDFLAGS=-nostartfiles -mcpu=cortex-m4 -mthumb -g3
 LDSCRIPT=
 DEFINES=
 OBJECTS=main.o entry.o
