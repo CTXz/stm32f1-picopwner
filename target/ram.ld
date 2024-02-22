@@ -5,6 +5,7 @@ MEMORY
   FLASH (rx)	      : ORIGIN = 0x08000000, LENGTH = 64K
   RAM_VTABLE (xrw)	: ORIGIN = 0x20000000, LENGTH = 768                                     /* Reserve 0x000-0x300 for ISR and entry point */
   RAM (xrw)	        : ORIGIN = ORIGIN(RAM_VTABLE)+LENGTH(RAM_VTABLE), LENGTH = 4K-LENGTH(RAM_VTABLE)     /* Limit RAM usage to 4KB for best compatibility */
+
 }
 
 SECTIONS

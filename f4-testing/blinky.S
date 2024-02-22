@@ -3,7 +3,7 @@
 .equ RCC_AHB1ENR, 0x40023830
 .equ GPIOC_MODER, 0x40020800
 .equ GPIOC_ODR, 0x40020814
-.equ GPIOC_BSR, 0x40020818
+.equ GPIOC_BSRR, 0x40020818
 
 .syntax unified
 .thumb

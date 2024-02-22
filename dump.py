@@ -475,8 +475,7 @@ else:
 # Upload the target firmware to the SRAM
 print("Press enter to load the target exploit firmware to the SRAM")
 input()
-# upload_target_fw(get_target_fw_bin(args.targetfw, usart))
-upload_target_fw("./f4-testing/blinky.bin")
+upload_target_fw(get_target_fw_bin(args.targetfw, usart))
 print("Target firmware loaded to the SRAM")
 
 # Ensure user disconnects the debug probe from the target

@@ -24,32 +24,38 @@
 
 #include <stdint.h>
 
+#define __IO volatile
+
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Special Registers
 #define AIRCR (*(uint32_t *)0xE000ED0Cu)
-#define FLASH_SIZE_REG (*(uint32_t *)0x1FFFF7E0u) // Flash size register, RM0008, page 1076:
+#define FLASH_SIZE_REG (*(uint32_t *)0x1FFF7A22) // Flash size register, RM0008, page 1076:
 
 //// Peripheral registers
 
 // RCC
-#define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
-#define RCC_APB2ENR (*(uint32_t *)0x40021018u)
+#define RCC_AHB1ENR (*(uint32_t *)0x40023830u)
+#define RCC_APB2ENR (*(uint32_t *)0x40023844u)
 
 // GPIO
 typedef struct __attribute__((packed))
 {
-	uint32_t CRL;
-	uint32_t CRH;
-	uint32_t IDR;
-	uint32_t ODR;
-	uint32_t BSRR;
-	uint32_t BRR;
-	uint32_t LCKR;
+	__IO uint32_t MODER;
+	__IO uint32_t OTYPER;
+	__IO uint32_t OSPEEDR;
+	__IO uint32_t PUPDR;
+	__IO uint32_t IDR;
+	__IO uint32_t ODR;
+	__IO uint32_t BSRR;
+	__IO uint32_t LCKR;
+	__IO uint32_t AFRL;
+	__IO uint32_t AFRH;
 } GPIO;
 
-#define GPIOA ((GPIO *)0x40010800u)
-#define GPIOB ((GPIO *)0x40010C00u)
+#define GPIOA ((GPIO *)0x40020000u)
+#define GPIOB ((GPIO *)0x40020400u)
+#define GPIOC ((GPIO *)0x40020800u)
 
 #define PIN_CONFIG_ALT_PUSH_PULL 0xB
 #define PIN_CONFIG_INPUT_PULL_UP 0x8
@@ -57,21 +63,22 @@ typedef struct __attribute__((packed))
 // USART
 typedef struct __attribute__((packed))
 {
-	uint32_t SR;
-	uint32_t DR;
-	uint32_t BRR;
-	uint32_t CR1;
-	uint32_t CR2;
-	uint32_t CR3;
-	uint32_t GTPR;
+	__IO uint32_t SR;
+	__IO uint32_t DR;
+	__IO uint32_t BRR;
+	__IO uint32_t CR1;
+	__IO uint32_t CR2;
+	__IO uint32_t CR3;
+	__IO uint32_t GTPR;
 } USART;
 
-#define USART1 ((USART *)0x40013800u)
+#define USART1 ((USART *)0x40011000u)
 #define USART2 ((USART *)0x40004400u)
 #define USART3 ((USART *)0x40004800u)
 
-#define USARTDIV 0x00000341u	  // 9600 baud @ 8Mhz
-#define USART_CR1_MSK 0x00002008u // 8-bit, no parity, enable TX
+#define USARTDIV ((int)(16000000 / (16 * 9600)) << 4)
+#define USART_CR1_MSK ((1 << 13) | (1 << 3)) // 8-bit, no parity, enable TX
+#define USART_SR_TC (1 << 6)
 
 volatile USART *usart;
 
@@ -80,14 +87,17 @@ volatile USART *usart;
 USART *init_usart1()
 {
 	/* Enable Clocks */
-	RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
-	RCC_APB2ENR |= (1 << 14); // USART1 clock enable
+	RCC_AHB1ENR |= (1 << 0); // GPIOA clock enable
+	RCC_APB2ENR |= (1 << 4); // USART1 clock enable
 
 	/* Configure Pins */
 
 	// Set PA9 (TX) to alternate function push-pull
-	GPIOA->CRH &= ~(0xF << 4);
-	GPIOA->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 4);
+	GPIOA->MODER &= ~(0b111 << 18);
+	GPIOA->MODER |= (0b10 << 18);
+	GPIOA->OSPEEDR |= (0b11 << 9);
+	GPIOA->AFRH &= ~(0b1111 << 4);
+	GPIOA->AFRH |= (0b111 << 4);
 
 	/* Configure and enable USART1 */
 	USART1->BRR = USARTDIV;
@@ -102,13 +112,13 @@ USART *init_usart2()
 {
 	/* Enable Clocks */
 	RCC_APB2ENR |= (1 << 2);  // Input-Output Port A clock enable
-	RCC_APB1ENR |= (1 << 17); // USART2 clock enable
+	RCC_AHB1ENR |= (1 << 17); // USART2 clock enable
 
 	/* Configure Pins */
 
 	// Set PA2 (TX) to alternate function push-pull
-	GPIOA->CRL &= ~(0xF << 8);
-	GPIOA->CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+	// GPIOA->CRL &= ~(0xF << 8);
+	// GPIOA->CRL |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
 
 	/* Configure and enable USART2 */
 	USART2->BRR = USARTDIV;
@@ -123,11 +133,11 @@ USART *init_usart3()
 {
 	/* Enable Clocks */
 	RCC_APB2ENR |= (1 << 3);  // Input-Output Port B clock enable
-	RCC_APB1ENR |= (1 << 18); // USART3 clock enable
+	RCC_AHB1ENR |= (1 << 18); // USART3 clock enable
 
 	// Set PB10 (TX) to alternate function push-pull
-	GPIOB->CRH &= ~(0xF << 8);
-	GPIOB->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
+	// GPIOB->CRH &= ~(0xF << 8);
+	// GPIOB->CRH |= (PIN_CONFIG_ALT_PUSH_PULL << 8);
 
 	/* Configure and enable USART3 */
 	USART3->BRR = USARTDIV;
@@ -143,7 +153,7 @@ const uint8_t txtMap[] = "0123456789ABCDEF";
 // Writes character to USART
 void writeChar(uint8_t const chr)
 {
-	while (!(usart->SR & 0x80u))
+	while (!(usart->SR & USART_SR_TC))
 	{
 		/* wait */
 	}
@@ -208,10 +218,7 @@ int main(void)
 #else
 #error "No USART selected"
 #endif
-
 	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
-	if (flash_size == 64) // Force reading of the entire 128KB flash in 64KB devices, often used.
-		flash_size = 128;
 
 	/* Print start magic to inform the attack board that
 	   we are going to dump */
