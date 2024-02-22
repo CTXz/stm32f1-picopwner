@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+#define __IO volatile
+
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Special Registers
@@ -39,13 +41,13 @@ const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 // GPIO
 typedef struct __attribute__((packed))
 {
-	uint32_t CRL;
-	uint32_t CRH;
-	uint32_t IDR;
-	uint32_t ODR;
-	uint32_t BSRR;
-	uint32_t BRR;
-	uint32_t LCKR;
+	__IO uint32_t CRL;
+	__IO uint32_t CRH;
+	__IO uint32_t IDR;
+	__IO uint32_t ODR;
+	__IO uint32_t BSRR;
+	__IO uint32_t BRR;
+	__IO uint32_t LCKR;
 } GPIO;
 
 #define GPIOA ((GPIO *)0x40010800u)
@@ -57,13 +59,13 @@ typedef struct __attribute__((packed))
 // USART
 typedef struct __attribute__((packed))
 {
-	uint32_t SR;
-	uint32_t DR;
-	uint32_t BRR;
-	uint32_t CR1;
-	uint32_t CR2;
-	uint32_t CR3;
-	uint32_t GTPR;
+	__IO uint32_t SR;
+	__IO uint32_t DR;
+	__IO uint32_t BRR;
+	__IO uint32_t CR1;
+	__IO uint32_t CR2;
+	__IO uint32_t CR3;
+	__IO uint32_t GTPR;
 } USART;
 
 #define USART1 ((USART *)0x40013800u)
