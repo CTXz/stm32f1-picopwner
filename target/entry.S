@@ -79,12 +79,15 @@ stage2:
 	@ Clear BSS
 	ldr r0, =_bss_end
 	ldr r1, =_bss_start
-	mov r3, #0
+
 clrloop:
+	cmp r0, r1
+	beq clrloop_done
+	mov r3, #0
 	strd r3, r3, [r1]
 	add r1, r1, #8
-	cmp r1, r0
-	bne clrloop
+	b clrloop
+clrloop_done:
 
 	@ Jump to the main function defined in main.c
 	bl main
