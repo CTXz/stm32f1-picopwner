@@ -34,7 +34,7 @@ LDSCRIPT=
 DEFINES=
 OBJECTS=main.o entry.o
 OBJECTS_OUTPUT=$(addprefix $(BUILD_TARGET_OUT)/, $(OBJECTS))
-ELFS=108.elf 1cc.elf 1e0.elf
+ELFS=target.elf
 ELFS_OUTPUT=$(addprefix $(BUILD_TARGET_OUT)/, $(ELFS))
 
 usart1: DEFINES += -DUSE_USART1
@@ -64,13 +64,13 @@ create_build_target_dir:
 	$(CC) -o $(BUILD_TARGET_OUT)/$@ $(OBJECTS_OUTPUT) $(LDFLAGS) -Tram.ld
 
 usart1: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart1.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/target.elf target_usart1.bin
 
 usart2: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart2.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/target.elf target_usart2.bin
 
 usart3: $(OBJECTS) $(ELFS)
-	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/108.elf target_usart3.bin
+	$(OBJCOPY) -O binary $(BUILD_TARGET_OUT)/target.elf target_usart3.bin
 
 all:
 	$(MAKE) usart1
