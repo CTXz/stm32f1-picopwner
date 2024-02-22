@@ -77,6 +77,8 @@ typedef struct __attribute__((packed))
 
 volatile USART *usart;
 
+#if defined(USE_USART1)
+
 /* Intializes USART1
  * Returns the USART1 control register */
 USART *init_usart1()
@@ -97,6 +99,8 @@ USART *init_usart1()
 
 	return USART1;
 }
+
+#elif defined(USE_USART2)
 
 /* Intializes USART2
  * Returns the USART2 control register */
@@ -119,6 +123,8 @@ USART *init_usart2()
 	return USART2;
 }
 
+#elif defined(USE_USART3)
+
 /* Intializes USART3
  * Returns the USART3 control register */
 USART *init_usart3()
@@ -137,6 +143,8 @@ USART *init_usart3()
 
 	return USART3;
 }
+
+#endif
 
 //// Printing
 
