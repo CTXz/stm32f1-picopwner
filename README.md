@@ -235,7 +235,7 @@ With all of the above explained, we can now finally explain the attack in detail
 
 ### Step 1: Preparation
 
-During the first step, the debug probe is connected to the target STM32F1 board. This will cause condition 1 of the RDP lock to be triggered. The debug probe is then used to load the exploit firmware into SRAM and is then disconnected from the target board. As already mentioned above, condition 1 of the RDP lock will persist until the device is power cycled!
+During the first step, the debug probe is connected to the target STM32F1 board. This will cause condition 1 of the RDP lock to be triggered. The debug probe is then used to load the exploit firmware into SRAM and is then disconnected from the target board. Remember that condition 1 of the RDP lock will persist until the device is power cycled!
 
 ### Step 2: Power Glitching
 
@@ -243,7 +243,7 @@ The goal here is to get rid of the RDP lock caused by condition 1, as well as bo
 we will use a power glitching attack. The attack board (Pi Pico) will first prepare `BOOT0` high and then toggle the power of the target board off. After switching the
 power off, the attack board will monitor the `NRST` pin's logic state and immediately restore power once it the `NRST` pin drops low. Due to the short time it takes for
 the `NRST` pin to drop low, the SRAM contents will remain preserved (due to data retention) and the STM32F1 will boot into SRAM since `BOOT0` and `BOOT1` are now both 
-high. The RDP lock caused by condition 1 will also be ridden since the debug probe is not connected to the target board any more and a power cycle has occurred.
+high. The RDP lock caused by condition 1 will also be ridden since the debug probe is not connected to the target board anymore and a power cycle has occurred.
 
 ![Power Glitching](img/PowerGlitching.png)
 [Source](https://www.usenix.org/system/files/woot20-paper-obermaier.pdf)
