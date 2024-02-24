@@ -75,6 +75,8 @@ typedef struct __attribute__((packed))
 #define USARTDIV 0x00000341u	  // 9600 baud @ 8Mhz
 #define USART_CR1_MSK 0x00002008u // 8-bit, no parity, enable TX
 
+#define USART_SR_TXE (1 << 7)
+
 volatile USART *usart;
 
 #if defined(USE_USART1)
@@ -153,7 +155,7 @@ const uint8_t txtMap[] = "0123456789ABCDEF";
 // Writes character to USART
 void writeChar(uint8_t const chr)
 {
-	while (!(usart->SR & 0x80u))
+	while (!(usart->SR & USART_SR_TXE))
 	{
 		/* wait */
 	}
