@@ -142,7 +142,7 @@ Below is a picture that shows the hardware setup using a Blue Pill board as the 
 
 ## Executing the attack
 
-1. Begin by connecting connecting the Pi Pico to your PC via USB. Your Pi Pico as well as the target board should now be powered on.
+1. Begin by connecting the Pi Pico to your PC via USB. Your Pi Pico as well as the target board should now be powered on.
 
 > Note: Depending on the target board, it may not be obvious whether the STM32F1 is powered on or not. One way to confirm that the targeted STM32F1 is 
 > receiving power is to check if the `NRST` pin is being pulled high. Another method to confirm whether the targeted STM32F1 is receiving power is to
