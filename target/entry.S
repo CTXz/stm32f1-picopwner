@@ -30,7 +30,7 @@ sp_addr:.word 0x20001000 	@ 0x00: Stack Pointer address
 	.word 0			@ 0x14: BusFault not handled
 	.word 0			@ 0x18: UsageFault not handled
 	.word 0			@ 0x1CL Unused/Reserved
-	.word stage2+1		@ 0x20: FPB reset remap
+	.word stage2+1		@ 0x20: FPB reset remap (Enters stage 2)
 
 
 @ -- SRAM Execution entry points --
