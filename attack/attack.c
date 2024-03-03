@@ -158,36 +158,36 @@ int main()
 	gpio_set_dir(RESET_PIN, GPIO_IN);
 	gpio_pull_up(RESET_PIN);
 
-	// Wait for dump start magic to ensure
-	// that we don't forward any garbage data
-	// caused by the reset
-	uint magic_index = 0;
-	while (true)
-	{
-		char c = uart_getc(UART_ID);
-		if (c == DUMP_START_MAGIC[magic_index])
-		{
-			if (++magic_index == sizeof(DUMP_START_MAGIC))
-			{
-				break;
-			}
-		}
-		else
-		{
-			magic_index = 0;
-		}
-	}
-
-	// Forward dumped data from UART to USB serial
 	uint stalls = 0;
+	uint magic_index = 0;
+	bool magic_received = false;
 	while (true)
 	{
 		if (uart_is_readable(UART_ID))
 		{
 			char c = uart_getc(UART_ID);
-			putchar(c);
-			pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
+		
 			stalls = 0;
+			
+			if (magic_received)
+			{
+				putchar(c);
+				pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
+				magic_received = false;
+				continue;
+			}
+
+			if (c == DUMP_START_MAGIC[magic_index])
+			{
+				if (++magic_index == sizeof(DUMP_START_MAGIC))
+				{
+					magic_received = true;
+				}
+			}
+			else
+			{
+				magic_index = 0;
+			}
 		}
 		else
 		{

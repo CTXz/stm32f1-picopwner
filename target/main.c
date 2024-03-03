@@ -207,6 +207,9 @@ void alertCrash(uint32_t crashId)
 
 //// Main
 
+extern volatile uint32_t saddr;
+extern void incr_saddr(void);
+
 // Called by stage 2 in entry.S
 int main(void)
 {
@@ -226,16 +229,20 @@ int main(void)
 		flash_size = 128;
 
 	/* Print start magic to inform the attack board that
-	   we are going to dump */
+	we are going to dump */
 	for (uint32_t i = 0; i < sizeof(DUMP_START_MAGIC); i++)
 	{
 		writeChar(DUMP_START_MAGIC[i]);
 	}
 
-	uint32_t const *addr = (uint32_t *)0x08000000;
+	uint32_t const *addr = (uint32_t *)saddr;
 	while (((uintptr_t)addr) < (0x08000000U + (flash_size * 1024U)))
 	{
 		writeWord(*addr);
-		++addr;
+		incr_saddr();
+
+		AIRCR = 0x05FA0004u; // Reset
+		while (1)
+			;
 	}
 }

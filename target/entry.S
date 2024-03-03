@@ -29,7 +29,7 @@ sp_addr:.word 0x20001000 	@ 0x00: Stack Pointer address
 	.word isrMemMan+1 	@ 0x10: MemManage Handler
 	.word 0			@ 0x14: BusFault not handled
 	.word 0			@ 0x18: UsageFault not handled
-	.word 0			@ 0x1CL Unused/Reserved
+	.word 0			@ 0x1C Unused/Reserved
 	.word stage2+1		@ 0x20: FPB reset remap (Enters stage 2)
 
 
@@ -48,19 +48,23 @@ sp_addr:.word 0x20001000 	@ 0x00: Stack Pointer address
 	b _start @ 2 bytes (Thumb2)
 .endr
 
+.section .data
+	.global saddr
+saddr:
+	.word 0x08000000
+
 .section .text
 .thumb
 @ -- Stage 1 --
 _start:
 	@ Set FPB to remap the reset vector to SRAM
 	ldr r0, =0xe0002000   @ FP_CTRL, see https://developer.arm.com/documentation/ddi0337/e/System-Debug/FPB/FPB-programmer-s-model
-        movs r1, #3           @ FP_CTRL: Enable FPB                                                                        
-        movs r2, #0x20        @ FP_REMAP: Remap to stage 2 vtable entry (0x20)                              
-        movs r3, #0x05        @ FP_COMP0: Set COMP0 to (rst_vector | EN) = 0x05
-        stm r0!, {r1, r2, r3} @ Apply to FPB                                                                
+	movs r1, #3           @ FP_CTRL: Enable FPB                                                                        
+	movs r2, #0x20        @ FP_REMAP: Remap to stage 2 vtable entry (0x20)                              
+	movs r3, #0x05        @ FP_COMP0: Set COMP0 to (rst_vector | EN) = 0x05
+	stm r0!, {r1, r2, r3} @ Apply to FPB                                                                
 waitrst:
 	b waitrst	      @ Wait for NRST pin to be toggled
-
 
 @ -- Stage 2 --
 stage2:	
@@ -96,6 +100,13 @@ clrloop_done:
 infloop:
 	b infloop
 
+.global incr_saddr
+incr_saddr:
+	ldr r0, =saddr
+	ldr r1, [r0]
+	add r1, r1, #4
+	str r1, [r0]
+	bx lr
 
 @ -- Exception Handler --
 @ Jump to alertCrash in case of either NMI, HardFault or MemManage
