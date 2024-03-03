@@ -76,6 +76,7 @@ typedef struct __attribute__((packed))
 #define USART_CR1_MSK 0x00002008u // 8-bit, no parity, enable TX
 
 #define USART_SR_TXE (1 << 7)
+#define USART_SR_TC (1 << 6)
 
 volatile USART *usart;
 
@@ -228,21 +229,19 @@ int main(void)
 	if (flash_size == 64) // Force reading of the entire 128KB flash in 64KB devices, often used.
 		flash_size = 128;
 
-	/* Print start magic to inform the attack board that
-	we are going to dump */
+	uint32_t const *addr = (uint32_t *)saddr;
+
 	for (uint32_t i = 0; i < sizeof(DUMP_START_MAGIC); i++)
 	{
 		writeChar(DUMP_START_MAGIC[i]);
 	}
 
-	uint32_t const *addr = (uint32_t *)saddr;
 	while (((uintptr_t)addr) < (0x08000000U + (flash_size * 1024U)))
 	{
 		writeWord(*addr);
 		incr_saddr();
-
+		while (!(usart->SR & USART_SR_TC));
 		AIRCR = 0x05FA0004u; // Reset
-		while (1)
-			;
+        while (1);
 	}
 }

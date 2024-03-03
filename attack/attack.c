@@ -161,6 +161,7 @@ int main()
 	uint stalls = 0;
 	uint magic_index = 0;
 	bool magic_received = false;
+	uint8_t word_counter = 0;
 	while (true)
 	{
 		if (uart_is_readable(UART_ID))
@@ -173,7 +174,12 @@ int main()
 			{
 				putchar(c);
 				pwm_set_gpio_level(LED_PIN, c); // LED will change intensity based on UART data
-				magic_received = false;
+				word_counter++;
+				if (word_counter == 4)
+				{
+					word_counter = 0;
+					magic_received = false;
+				}
 				continue;
 			}
 
