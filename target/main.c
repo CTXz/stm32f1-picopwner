@@ -193,14 +193,9 @@ void writeStr(uint8_t const *const str)
 
 //// Exception handling
 
-/* Handles memory management faults
- * Typically indicates that the exploit failed */
+/* Handles faults */
 void alertCrash(uint32_t crashId)
 {
-	writeStr("!!! EXCEPTION !!!\r\nID: ");
-	writeByte(crashId);
-	writeStr("\r\nRestart required!\r\n\r\n");
-	AIRCR = 0x05FA0004u; // Reset
 	while (1)
 		;
 }
