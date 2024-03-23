@@ -34,6 +34,32 @@ const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Peripheral registers
 
+// Option bytes
+typedef struct __attribute__((packed))
+{
+  __IO uint16_t RDP;
+  __IO uint16_t USER;
+  __IO uint16_t Data0;
+  __IO uint16_t Data1;
+  __IO uint16_t WRP0;
+  __IO uint16_t WRP1;
+  __IO uint16_t WRP2;
+  __IO uint16_t WRP3;
+} OB_TypeDef;
+
+#define OB      ((OB_TypeDef *)0x1FFFF800UL)
+
+// IWDG
+typedef struct __attribute__((packed))
+{
+  __IO uint32_t KR;
+  __IO uint32_t PR;
+  __IO uint32_t RLR;
+  __IO uint32_t SR;
+} IWDG_TypeDef;
+
+#define IWDG    ((IWDG_TypeDef *)0x40003000)
+
 // RCC
 #define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
 #define RCC_APB2ENR (*(uint32_t *)0x40021018u)
@@ -148,6 +174,12 @@ USART *init_usart3()
 
 #endif
 
+void resfresh_iwdg(void){
+	if(iwdg_enabled)
+	{
+		IWDG->KR=0xAAAA;
+	}
+}
 //// Printing
 
 const uint8_t txtMap[] = "0123456789ABCDEF";
@@ -156,7 +188,8 @@ const uint8_t txtMap[] = "0123456789ABCDEF";
 void writeChar(uint8_t const chr)
 {
 	while (!(usart->SR & USART_SR_TXE))
-	{
+	{	
+		resfresh_iwdg();		// A byte takes ~1ms to be send at 9600, so there's plenty of time to reset the IWDG
 		/* wait */
 	}
 
@@ -197,14 +230,17 @@ void writeStr(uint8_t const *const str)
 void alertCrash(uint32_t crashId)
 {
 	while (1)
-		;
+	{
+		resfresh_iwdg();
+	}
 }
 
 //// Main
 
 // Called by stage 2 in entry.S
 int main(void)
-{
+	resfresh_iwdg();
+
 	/* Init USART */
 #if defined(USE_USART1)
 	usart = init_usart1();
@@ -215,10 +251,12 @@ int main(void)
 #else
 #error "No USART selected"
 #endif
-
+	uint8_t iwdg_enabled = OB->USER & (1UL<<16);
 	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
-	if (flash_size == 64) // Force reading of the entire 128KB flash in 64KB devices, often used.
+	if (flash_size == 64) 				// Force reading of the entire 128KB flash in 64KB devices, often used.
+	{
 		flash_size = 128;
+	}
 
 	/* Print start magic to inform the attack board that
 	   we are going to dump */
@@ -232,5 +270,13 @@ int main(void)
 	{
 		writeWord(*addr);
 		++addr;
+		if(iwdg_enabled){
+    			IWDG->KR=0xAAAA;
+		}
+	}
+
+	while(1)					// End
+	{
+		resfresh_iwdg();
 	}
 }
