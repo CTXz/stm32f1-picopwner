@@ -26,6 +26,7 @@
 
 #define __IO volatile
 
+uint8_t iwdg_enabled;
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Special Registers
@@ -251,7 +252,7 @@ int main(void)
 #else
 #error "No USART selected"
 #endif
-	uint8_t iwdg_enabled = OB->USER & (1UL<<16);
+	iwdg_enabled = OB->USER & (1UL<<16);
 	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
 	if (flash_size == 64) 				// Force reading of the entire 128KB flash in 64KB devices, often used.
 	{
