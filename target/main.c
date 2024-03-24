@@ -252,7 +252,7 @@ int main(void)
 #else
 #error "No USART selected"
 #endif
-	iwdg_enabled = OB->USER & (1UL<<16);
+	iwdg_enabled = (OB->USER & (1UL<<16)) == 0;	// Check WDG_SW bit. Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
 	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
 	if (flash_size == 64) 				// Force reading of the entire 128KB flash in 64KB devices, often used.
 	{
