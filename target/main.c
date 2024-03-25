@@ -35,31 +35,8 @@ const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Peripheral registers
 
-// Option bytes
-typedef struct __attribute__((packed))
-{
-  __IO uint16_t RDP;
-  __IO uint16_t USER;
-  __IO uint16_t Data0;
-  __IO uint16_t Data1;
-  __IO uint16_t WRP0;
-  __IO uint16_t WRP1;
-  __IO uint16_t WRP2;
-  __IO uint16_t WRP3;
-} OB_TypeDef;
-
-#define OB      ((OB_TypeDef *)0x1FFFF800UL)
-
-// IWDG
-typedef struct __attribute__((packed))
-{
-  __IO uint32_t KR;
-  __IO uint32_t PR;
-  __IO uint32_t RLR;
-  __IO uint32_t SR;
-} IWDG_TypeDef;
-
-#define IWDG    ((IWDG_TypeDef *)0x40003000)
+#define _IWDG_KR (*(uint16_t*)0x40003000)
+#define _WDG_SW  (*(uint32_t*)0x1FFFF800 & 1UL<<16)	// Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
 
 // RCC
 #define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
@@ -178,7 +155,7 @@ USART *init_usart3()
 void resfresh_iwdg(void){
 	if(iwdg_enabled)
 	{
-		IWDG->KR=0xAAAA;
+		_IWDG_KR = 0xAAAA;
 	}
 }
 //// Printing
@@ -240,6 +217,7 @@ void alertCrash(uint32_t crashId)
 
 // Called by stage 2 in entry.S
 int main(void)
+	iwdg_enabled = (_WDG_SW == 0);	// Check WDG_SW bit.
 	resfresh_iwdg();
 
 	/* Init USART */
@@ -252,7 +230,6 @@ int main(void)
 #else
 #error "No USART selected"
 #endif
-	iwdg_enabled = (OB->USER & (1UL<<16)) == 0;	// Check WDG_SW bit. Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
 	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
 	if (flash_size == 64) 				// Force reading of the entire 128KB flash in 64KB devices, often used.
 	{
