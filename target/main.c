@@ -26,13 +26,13 @@
 
 #define __IO volatile
 
+uint8_t iwdg_enabled;
 const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
-//// Special Registers
-#define AIRCR (*(uint32_t *)0xE000ED0Cu)
-#define FLASH_SIZE_REG (*(uint32_t *)0x1FFFF7E0u) // Flash size register, RM0008, page 1076:
-
 //// Peripheral registers
+
+#define _IWDG_KR (*(uint16_t*)0x40003000)
+#define _WDG_SW  (*(uint32_t*)0x1FFFF800 & 1UL<<16)	// Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
 
 // RCC
 #define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
@@ -148,6 +148,12 @@ USART *init_usart3()
 
 #endif
 
+void refresh_iwdg(void){
+	if(iwdg_enabled)
+	{
+		_IWDG_KR = 0xAAAA;
+	}
+}
 //// Printing
 
 const uint8_t txtMap[] = "0123456789ABCDEF";
@@ -156,7 +162,8 @@ const uint8_t txtMap[] = "0123456789ABCDEF";
 void writeChar(uint8_t const chr)
 {
 	while (!(usart->SR & USART_SR_TXE))
-	{
+	{	
+		refresh_iwdg();						// A byte takes ~1ms to be send at 9600, so there's plenty of time to reset the IWDG
 		/* wait */
 	}
 
@@ -197,7 +204,9 @@ void writeStr(uint8_t const *const str)
 void alertCrash(uint32_t crashId)
 {
 	while (1)
-		;
+	{
+		refresh_iwdg();						// Keep refreshing IWDG to prevent reset
+	}
 }
 
 //// Main
@@ -205,6 +214,9 @@ void alertCrash(uint32_t crashId)
 // Called by stage 2 in entry.S
 int main(void)
 {
+	iwdg_enabled = (_WDG_SW == 0);					// Check WDG_SW bit.
+	refresh_iwdg();
+
 	/* Init USART */
 #if defined(USE_USART1)
 	usart = init_usart1();
@@ -216,10 +228,6 @@ int main(void)
 #error "No USART selected"
 #endif
 
-	uint32_t flash_size = FLASH_SIZE_REG & 0xFFFF;
-	if (flash_size == 64) // Force reading of the entire 128KB flash in 64KB devices, often used.
-		flash_size = 128;
-
 	/* Print start magic to inform the attack board that
 	   we are going to dump */
 	for (uint32_t i = 0; i < sizeof(DUMP_START_MAGIC); i++)
@@ -228,9 +236,14 @@ int main(void)
 	}
 
 	uint32_t const *addr = (uint32_t *)0x08000000;
-	while (((uintptr_t)addr) < (0x08000000U + (flash_size * 1024U)))
+	while (((uintptr_t)addr) < (0x08000000U + (1024UL * 1024UL)))	// Try dumping up to 1M. When reaching unimplemented memory, it will cause hard fault and stop.
 	{
 		writeWord(*addr);
 		++addr;
+	}
+
+	while(1)							// End
+	{
+		refresh_iwdg();						// Keep refreshing IWDG to prevent reset
 	}
 }
