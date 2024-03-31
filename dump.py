@@ -512,14 +512,15 @@ with open(fname, "wb") as f:
 
         f.write(data)
 
+        if read_bytes % 16 == 0:
+            print("\n" + hex(0x8000000 + read_bytes) + ": ", end="")
+            
         # Convert to hex string and print
         data = data.hex()
         print(" " + data, end="")
 
         # Beak line every 16 bytes
         read_bytes += 1
-        if read_bytes % 16 == 0:
-            print()
 
     # Check if we managed to read any data
     # If we haven't, something went wrong
