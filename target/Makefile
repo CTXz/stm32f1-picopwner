@@ -22,7 +22,7 @@
 #  - clean: Remove all build files
 #  - release: Create a release tarball containing all target firmware binaries
 
-RELEASE_VERSION=1.3
+RELEASE_VERSION=1.4
 BUILD_OUT=build
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-ld

@@ -38,7 +38,7 @@ from pathlib import Path
 from serial import Serial, SerialException
 
 BAUDRATE = 9600
-SCRIPT_VERSION = "1.4"
+SCRIPT_VERSION = "1.5"
 REQ_ATTACK_BOARD_VERSION = "1.x"
 SERIAL_TIMEOUT_S = 0.5
 SRAM_START = 0x20000000
@@ -514,7 +514,7 @@ with open(fname, "wb") as f:
 
         if read_bytes % 16 == 0:
             print("\n" + hex(0x8000000 + read_bytes) + ": ", end="")
-            
+
         # Convert to hex string and print
         data = data.hex()
         print(" " + data, end="")

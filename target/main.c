@@ -1,7 +1,7 @@
 /*
  * Authors: JohannesObermaier, Patrick Pedersen
  *
- * Target Firmware Version: 1.3
+ * Target Firmware Version: 1.4
  *
  * Dumps the entire flash memory of the target board
  * and sends it over UART, where it is then received
@@ -31,8 +31,8 @@ const char DUMP_START_MAGIC[] = {0x10, 0xAD, 0xDA, 0x7A};
 
 //// Peripheral registers
 
-#define _IWDG_KR (*(uint16_t*)0x40003000)
-#define _WDG_SW  (*(uint32_t*)0x1FFFF800 & 1UL<<16)	// Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
+#define _IWDG_KR (*(uint16_t *)0x40003000)
+#define _WDG_SW (*(uint32_t *)0x1FFFF800 & 1UL << 16) // Page 20: https://www.st.com/resource/en/programming_manual/pm0075-stm32f10xxx-flash-memory-microcontrollers-stmicroelectronics.pdf
 
 // RCC
 #define RCC_APB1ENR (*(uint32_t *)0x4002101Cu)
@@ -148,8 +148,9 @@ USART *init_usart3()
 
 #endif
 
-void refresh_iwdg(void){
-	if(iwdg_enabled)
+void refresh_iwdg(void)
+{
+	if (iwdg_enabled)
 	{
 		_IWDG_KR = 0xAAAA;
 	}
@@ -162,9 +163,9 @@ const uint8_t txtMap[] = "0123456789ABCDEF";
 void writeChar(uint8_t const chr)
 {
 	while (!(usart->SR & USART_SR_TXE))
-	{	
-		refresh_iwdg();						// A byte takes ~1ms to be send at 9600, so there's plenty of time to reset the IWDG
-		/* wait */
+	{
+		refresh_iwdg(); // A byte takes ~1ms to be send at 9600, so there's plenty of time to reset the IWDG
+				/* wait */
 	}
 
 	usart->DR = chr;
@@ -205,7 +206,7 @@ void alertCrash(uint32_t crashId)
 {
 	while (1)
 	{
-		refresh_iwdg();						// Keep refreshing IWDG to prevent reset
+		refresh_iwdg(); // Keep refreshing IWDG to prevent reset
 	}
 }
 
@@ -214,7 +215,7 @@ void alertCrash(uint32_t crashId)
 // Called by stage 2 in entry.S
 int main(void)
 {
-	iwdg_enabled = (_WDG_SW == 0);					// Check WDG_SW bit.
+	iwdg_enabled = (_WDG_SW == 0); // Check WDG_SW bit.
 	refresh_iwdg();
 
 	/* Init USART */
@@ -236,14 +237,14 @@ int main(void)
 	}
 
 	uint32_t const *addr = (uint32_t *)0x08000000;
-	while (((uintptr_t)addr) < (0x08000000U + (1024UL * 1024UL)))	// Try dumping up to 1M. When reaching unimplemented memory, it will cause hard fault and stop.
+	while (((uintptr_t)addr) < (0x08000000U + (1024UL * 1024UL))) // Try dumping up to 1M. When reaching unimplemented memory, it will cause hard fault and stop.
 	{
 		writeWord(*addr);
 		++addr;
 	}
 
-	while(1)							// End
+	while (1) // End
 	{
-		refresh_iwdg();						// Keep refreshing IWDG to prevent reset
+		refresh_iwdg(); // Keep refreshing IWDG to prevent reset
 	}
 }
